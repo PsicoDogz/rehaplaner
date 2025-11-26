@@ -1,0 +1,120 @@
+:root {
+    --primary-blue: #2563EB;
+    --primary-dark: #1E40AF;
+    --bg-light: #F3F4F6;
+    --text-dark: #1F2937;
+    --text-grey: #6B7280;
+    --card-bg: #FFFFFF;
+    --accent-green: #10B981;
+    --accent-green-bg: #D1FAE5;
+    --accent-purple: #8B5CF6;
+    --accent-purple-bg: #EDE9FE;
+    --accent-orange: #FFEDD5;
+    --accent-orange-text: #9A3412;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+body {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    padding-bottom: 90px; /* Space for Bottom Nav */
+    padding-top: 60px; /* Space for Header */
+}
+
+/* Header */
+.app-header {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 60px; background: white;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 16px; border-bottom: 1px solid #E5E7EB; z-index: 1000;
+}
+
+.logo-area { display: flex; align-items: center; gap: 10px; }
+.logo-circle { background: #DBEAFE; color: var(--primary-blue); padding: 5px 8px; border-radius: 50%; font-size: 0.7rem; font-weight: bold; }
+.app-header h1 { font-size: 1.2rem; color: #003366; }
+
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.text-btn { background: none; border: 1px solid #ccc; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 1rem; }
+.icon-btn { background: none; border: none; cursor: pointer; }
+
+/* Main Content */
+main { padding: 16px; max-width: 600px; margin: 0 auto; }
+.view { display: none; animation: fadeIn 0.3s ease; }
+.view.active { display: block; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Cards Common */
+.card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+/* Welcome Card */
+.welcome-card { background: var(--primary-blue); color: white; display: flex; justify-content: space-between; align-items: flex-start; }
+.welcome-text h2 { font-size: 2rem; margin: 5px 0 15px 0; }
+.subtext { opacity: 0.9; font-size: 1rem; }
+.divider { border: 0; border-top: 1px solid rgba(255,255,255,0.3); margin-bottom: 12px; }
+.info-row { margin-bottom: 4px; font-size: 0.95rem; }
+.user-avatar { background: rgba(255,255,255,0.2); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.user-avatar span { font-size: 32px; color: white; }
+
+/* Appointment Card */
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.badge-orange { background: var(--accent-orange); color: var(--accent-orange-text); padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
+.detail-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.icon-blue { color: var(--primary-blue); }
+.large-text { font-size: 1.2rem; font-weight: 600; }
+.therapy-type { color: var(--primary-blue); font-size: 1.1rem; margin: 12px 0; }
+.requirements p { color: var(--text-grey); font-size: 0.9rem; margin-bottom: 8px; }
+.chips { display: flex; gap: 8px; }
+.chip { background: #F3F4F6; padding: 6px 12px; border-radius: 8px; font-size: 0.95rem; color: #4B5563; border: 1px solid #E5E7EB; }
+
+/* Stats Row */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.stat-card { background: white; border-radius: 16px; padding: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 120px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.green-bg { background: var(--accent-green-bg); }
+.purple-bg { background: var(--accent-purple-bg); }
+.stat-number { font-size: 1.8rem; font-weight: bold; display: block; margin-bottom: 4px; }
+.green-text { color: #047857; }
+.purple-text { color: #7C3AED; }
+.stat-label { font-size: 0.9rem; color: var(--text-grey); }
+
+/* Chat View Specifics */
+.view-title { text-align: center; color: #003366; margin-bottom: 16px; font-size: 1.2rem; }
+.contact-selector { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
+.contact-btn {
+    flex: 1; min-width: 100px;
+    background: white; border: 1px solid #E5E7EB;
+    border-radius: 12px; padding: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: var(--text-grey); font-weight: 600; font-size: 0.9rem;
+    cursor: pointer;
+}
+.contact-btn.active { background: var(--primary-blue); color: white; border-color: var(--primary-blue); }
+.chat-area { height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-grey); text-align: center; font-size: 1.1rem; padding: 20px; }
+
+/* Bottom Nav */
+.bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 70px; background: white; border-top: 1px solid #E5E7EB;
+    display: flex; justify-content: space-around; align-items: center;
+    z-index: 1000;
+}
+.nav-item {
+    background: none; border: none;
+    display: flex; flex-direction: column; align-items: center;
+    color: var(--text-grey); font-size: 0.75rem; gap: 4px;
+    cursor: pointer; width: 60px;
+}
+.nav-item.active { color: var(--primary-blue); }
+.nav-item .material-icons-round { font-size: 24px; }
+
+/* FAB (Training Button) */
+.fab-wrapper { position: relative; top: -25px; display: flex; flex-direction: column; align-items: center; }
+.fab-btn {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--primary-blue); border: 4px solid white;
+    color: white; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); cursor: pointer;
+}
+.fab-btn .material-icons-round { font-size: 32px; }
+.fab-label { font-size: 0.75rem; color: var(--primary-blue); font-weight: bold; margin-top: 4px; }
