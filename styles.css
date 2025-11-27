@@ -23,10 +23,8 @@
 body {
     background-color: var(--bg-light);
     color: var(--text-dark);
-    padding-bottom: 90px;
-    /* Space for Bottom Nav */
-    padding-top: 60px;
-    /* Space for Header */
+    padding-bottom: 90px; /* Space for Bottom Nav */
+    padding-top: 60px;    /* Space for Header */
 }
 
 /* Header */
@@ -312,17 +310,6 @@ main {
     border-color: var(--primary-blue);
 }
 
-.chat-area {
-    height: 300px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-grey);
-    text-align: center;
-    font-size: 1.1rem;
-    padding: 20px;
-}
-
 /* Bottom Nav */
 .bottom-nav {
     position: fixed;
@@ -498,7 +485,7 @@ main {
     transition: color 0.2s ease;
 }
 
-.checkbox-wrapper input:checked+.custom-checkbox {
+.checkbox-wrapper input:checked + .custom-checkbox {
     color: var(--accent-green);
 }
 
@@ -540,8 +527,7 @@ main {
 }
 
 .appointment-card.expanded .appt-details {
-    max-height: 200px;
-    /* Adjust based on content */
+    max-height: 200px; /* Adjust based on content */
     opacity: 1;
     margin-top: 16px;
     padding-top: 16px;
@@ -577,4 +563,80 @@ main {
 .small-text {
     font-size: 0.9rem;
     margin-top: 8px;
+}
+
+/* Chat Messages */
+.chat-area {
+    height: 260px;
+    padding: 12px;
+    background: #F9FAFB;
+    border-radius: 12px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.chat-message {
+    max-width: 80%;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+}
+
+.chat-message.from-user {
+    align-self: flex-end;
+    text-align: right;
+}
+
+.chat-message.from-contact {
+    align-self: flex-start;
+}
+
+.chat-bubble {
+    border-radius: 12px;
+    padding: 8px 10px;
+    background: #E5E7EB;
+}
+
+.chat-message.from-user .chat-bubble {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.chat-time {
+    font-size: 0.7rem;
+    color: var(--text-grey);
+    margin-top: 2px;
+}
+
+/* Chat Input */
+.chat-input {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid #D1D5DB;
+    font-size: 0.95rem;
+}
+
+.chat-input .icon-btn {
+    background: var(--primary-blue);
+    color: white;
+    border-radius: 999px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
 }
