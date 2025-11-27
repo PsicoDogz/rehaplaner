@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,7 +9,13 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563EB">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
 </head>
+
 <body>
 
     <header class="app-header">
@@ -25,7 +32,7 @@
     </header>
 
     <main id="main-content">
-        
+
         <section id="view-home" class="view active">
             <div class="card welcome-card">
                 <div class="welcome-text">
@@ -98,29 +105,25 @@
             </div>
         </section>
 
-        <!-- NEU: Training-View für den FAB -->
-        <section id="view-training" class="view hidden">
-            <h3 class="view-title">Training</h3>
-            <div class="placeholder-content">
-                <p>Hier können später Ihre Trainingspläne und Übungen angezeigt werden.</p>
-            </div>
-        </section>
-
         <section id="view-termine" class="view hidden">
-            <h3 class="view-title">Meine Termine</h3>
-
-            <div class="upload-box">
-                <input type="file" id="pdfUpload" accept="application/pdf" hidden>
-                
-                <button class="upload-btn" onclick="document.getElementById('pdfUpload').click()">
+            <div class="appointments-header">
+                <h3>Meine Termine</h3>
+                <label for="pdf-upload" class="icon-btn-large" aria-label="Termin-PDF importieren">
                     <span class="material-icons-round">upload_file</span>
-                    Reha-Plan PDF hochladen
-                </button>
+                </label>
+                <input type="file" id="pdf-upload" accept="application/pdf" style="display: none;">
             </div>
 
-            <div id="pdfList" class="pdf-list"></div>
+            <div id="appointments-container" class="appointments-list">
+                <!-- Termine werden hier dynamisch eingefügt -->
+                <div class="empty-state">
+                    <span class="material-icons-round large-icon">event_busy</span>
+                    <p>Keine Termine vorhanden.</p>
+                    <p class="small-text">Laden Sie Ihren Terminplan als PDF hoch.</p>
+                </div>
+            </div>
         </section>
-        
+
         <section id="view-doku" class="view hidden">
             <div class="placeholder-content">
                 <h3>Dokumente</h3>
@@ -139,7 +142,7 @@
             <span class="material-icons-round">calendar_today</span>
             <span>Termine</span>
         </button>
-        
+
         <div class="fab-wrapper">
             <button class="fab-btn" data-target="view-training">
                 <span class="material-icons-round">assignment_turned_in</span>
@@ -149,7 +152,7 @@
 
         <button class="nav-item" data-target="view-doku">
             <span class="material-icons-round">folder_open</span>
-            <span>Doku</span>
+            <span>Dokumente</span>
         </button>
         <button class="nav-item" data-target="view-chat">
             <span class="material-icons-round">chat_bubble_outline</span>
@@ -159,4 +162,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>
