@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="de">
 
@@ -86,20 +87,52 @@
 
         <section id="view-chat" class="view hidden">
             <h3 class="view-title">Ansprechpartner</h3>
+
+            <!-- Neuer Bereich: Name / Rolle des aktuellen Nutzers -->
+            <div class="chat-user-settings">
+                <label for="chat-name-input">Name</label>
+                <input
+                    type="text"
+                    id="chat-name-input"
+                    placeholder="Name"
+                    autocomplete="off"
+                />
+                <small class="chat-user-hint">
+                    Standardname ist der zum Patienten gehörige Name, kann aber geändert werden.
+                </small>
+            </div>
+
             <div class="contact-selector">
                 <button class="contact-btn active" data-contact="verwaltung">
                     <span class="material-icons-round">apartment</span>
                     Verwaltung
                 </button>
-                <button class="contact-btn" data-contact="arzt">
+                <button class="contact-btn" data-contact="therapeut">
                     <span class="material-icons-round">person</span>
-                    Arzt
+                    Therapeut
                 </button>
                 <button class="contact-btn" data-contact="fahrer">
                     <span class="material-icons-round">local_shipping</span>
                     Fahrer
                 </button>
             </div>
+
+            <!-- Nachrichtenliste -->
+            <div class="chat-area" id="chat-messages"></div>
+
+            <!-- Eingabezeile -->
+            <form class="chat-input" id="chat-form">
+                <input
+                    type="text"
+                    id="chat-message-input"
+                    placeholder="Nachricht eingeben..."
+                    autocomplete="off"
+                />
+                <button type="submit" class="icon-btn" aria-label="Nachricht senden">
+                    <span class="material-icons-round">send</span>
+                </button>
+            </form>
+        </section>
 
             <!-- Nachrichtenliste -->
             <div class="chat-area" id="chat-messages"></div>
