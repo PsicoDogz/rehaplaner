@@ -567,7 +567,11 @@ main {
 
 /* Chat Messages */
 .chat-area {
-    height: 260px;
+    position: fixed;
+    top: 150px;                  /* unter Titel + Tabs */
+    left: 16px;
+    right: 16px;
+    bottom: 165px;              /* endet direkt an der Eingabeleiste */
     padding: 12px;
     background: #F9FAFB;
     border-radius: 12px;
@@ -575,8 +579,6 @@ main {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    align-items: flex-start;
-    justify-content: flex-start;
 }
 
 .chat-message {
@@ -614,7 +616,7 @@ main {
 
 .chat-input {
     position: fixed;
-    bottom: 78px;
+    bottom: 115px; /* höher = weiter vom Training-Button entfernt */
     left: 0;
     right: 0;
 
@@ -622,18 +624,9 @@ main {
     gap: 8px;
     align-items: center;
 
-    padding: 8px 16px;
+    padding: 10px 16px;
     background: var(--bg-light);
     z-index: 999;
-}
-
-
-.chat-input input {
-    flex: 1;
-    padding: 8px 10px;
-    border-radius: 999px;
-    border: 1px solid #D1D5DB;
-    font-size: 0.95rem;
 }
 
 .chat-input .icon-btn {
