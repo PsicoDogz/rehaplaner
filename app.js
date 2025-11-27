@@ -4,8 +4,145 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     loadUserData();
     initAppointments();
+    initChat(); 
     registerServiceWorker();
 });
+
+let currentChatKey = 'verwaltung';
+let chatData = {}; // { verwaltung: [messages], arzt: [...], fahrer: [...] }
+
+function saveChats() {
+    localStorage.setItem('rehaChats', JSON.stringify(chatData));
+}
+
+function loadChats() {
+    const stored = localStorage.getItem('rehaChats');
+    if (stored) {
+        chatData = JSON.parse(stored);
+    } else {
+        chatData = {};
+    }
+    // Standard-Chats sicherstellen
+    ['verwaltung', 'arzt', 'fahrer'].forEach(key => {
+        if (!chatData[key]) chatData[key] = [];
+    });
+}
+
+function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[c]));
+}
+
+function initChat() {
+    loadChats();
+
+    const chatButtons = document.querySelectorAll('.contact-btn');
+    const messagesContainer = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-message-input');
+    const downloadBtn = document.getElementById('chat-download-btn');
+
+    // Aktuellen Chat aus aktivem Button bestimmen
+    const activeBtn = document.querySelector('.contact-btn.active');
+    if (activeBtn && activeBtn.dataset.contact) {
+        currentChatKey = activeBtn.dataset.contact;
+    }
+
+    // Nachrichten für aktuellen Chat anzeigen
+    renderChat(currentChatKey);
+
+    // Kontaktwechsel: anderen Chat laden
+    chatButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            chatButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const contactKey = btn.dataset.contact;
+            if (!chatData[contactKey]) chatData[contactKey] = [];
+            currentChatKey = contactKey;
+            renderChat(currentChatKey);
+        });
+    });
+
+    // Nachricht senden
+    if (chatForm) {
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            const msg = {
+                id: Date.now(),
+                from: 'user',
+                text: text,
+                timestamp: new Date().toISOString()
+            };
+
+            chatData[currentChatKey].push(msg);
+            saveChats();
+            renderChat(currentChatKey);
+            chatInput.value = '';
+        });
+    }
+
+    // JSON-Export für aktuellen Chat
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            exportChatAsJson(currentChatKey);
+        });
+    }
+}
+
+function renderChat(contactKey) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+
+    const messages = chatData[contactKey] || [];
+
+    if (messages.length === 0) {
+        messagesContainer.innerHTML = `<p style="color:#6B7280;">Noch keine Nachrichten. Schreiben Sie eine erste Nachricht.</p>`;
+        return;
+    }
+
+    messagesContainer.innerHTML = messages.map(m => {
+        const timeStr = new Date(m.timestamp).toLocaleTimeString('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const cls = m.from === 'user' ? 'from-user' : 'from-contact';
+        return `
+            <div class="chat-message ${cls}">
+                <div class="chat-bubble">${escapeHtml(m.text)}</div>
+                <span class="chat-time">${timeStr}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Immer nach unten scrollen
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function exportChatAsJson(contactKey) {
+    const data = chatData[contactKey] || [];
+    const jsonStr = JSON.stringify(data, null, 2);
+
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-${contactKey}.json`; // z.B. chat-verwaltung.json
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
 
 // Navigation Logic
 function initNavigation() {
@@ -31,16 +168,6 @@ function initNavigation() {
                     view.classList.add('active');
                 }
             });
-        });
-    });
-
-    // Chat Tab Selector Logic
-    const chatBtns = document.querySelectorAll('.contact-btn');
-    chatBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            chatBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            // Hier würde Logik folgen, um den Chat-Inhalt zu wechseln
         });
     });
 }
@@ -390,7 +517,7 @@ function renderAppointments(appointments) {
 
         label.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent card expansion
-            // Label click triggers input change automatically, but we stop propagation here
+            // Label click triggers input change automatically, but wir stoppen hier die Propagation
         });
 
         container.appendChild(card);
