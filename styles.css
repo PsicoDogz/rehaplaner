@@ -280,6 +280,38 @@ main {
     font-size: 1.2rem;
 }
 
+.chat-user-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.chat-user-settings label {
+    font-size: 0.85rem;
+    color: var(--text-grey);
+}
+
+.chat-user-settings input {
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid #D1D5DB;
+    font-size: 0.95rem;
+    background: #FFFFFF;
+}
+
+.chat-user-hint {
+    font-size: 0.75rem;
+    color: var(--text-grey);
+}
+
+/* Name/Rollen-Zeile im Chat-Bubble */
+.chat-author {
+    font-size: 0.75rem;
+    color: var(--text-grey);
+    margin-bottom: 2px;
+}
+
 .contact-selector {
     display: flex;
     gap: 10px;
