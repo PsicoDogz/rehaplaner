@@ -641,3 +641,67 @@ main {
     border: none;
     cursor: pointer;
 }
+
+
+/* Progress Bar Container */
+.progress-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.progress-card {
+    background: white;
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.progress-icon {
+    font-size: 48px;
+    color: var(--primary-blue);
+    margin-bottom: 16px;
+}
+
+.progress-card h4 {
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    font-size: 1.2rem;
+}
+
+.progress-card p {
+    color: var(--text-grey);
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+}
+
+.progress-bar-wrapper {
+    background: var(--bg-light);
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-bar-fill {
+    background: var(--primary-blue);
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-percent {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--primary-blue);
+}

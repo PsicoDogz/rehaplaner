@@ -128,6 +128,18 @@
                 <input type="file" id="pdf-upload" accept="application/pdf" style="display: none;">
             </div>
 
+            <div id="progress-container" class="progress-container" style="display: none;">
+                <div class="progress-card">
+                    <span class="material-icons-round progress-icon">upload_file</span>
+                    <h4>PDF wird verarbeitet...</h4>
+                    <p id="progress-status">Datei wird geladen</p>
+                    <div class="progress-bar-wrapper">
+                        <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                    </div>
+                    <span id="progress-percent" class="progress-percent">0%</span>
+                </div>
+            </div>
+
             <div id="appointments-container" class="appointments-list">
                 <!-- Termine werden hier dynamisch eingefügt -->
                 <div class="empty-state">

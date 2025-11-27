@@ -238,6 +238,27 @@ function loadAppointments() {
     }
 }
 
+// Progress Bar Functions
+function showProgressBar() {
+    document.getElementById('progress-container').style.display = 'flex';
+    updateProgressBar(0, 'Datei wird geladen...');
+}
+
+function hideProgressBar() {
+    document.getElementById('progress-container').style.display = 'none';
+}
+
+function updateProgressBar(percent, statusText) {
+    const fill = document.getElementById('progress-bar-fill');
+    const percentText = document.getElementById('progress-percent');
+    const status = document.getElementById('progress-status');
+    
+    fill.style.width = percent + '%';
+    percentText.textContent = Math.round(percent) + '%';
+    status.textContent = statusText;
+}
+
+
 async function handlePDFUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -247,23 +268,34 @@ async function handlePDFUpload(event) {
         return;
     }
 
+    // PROGRESS BAR START
+    showProgressBar();
+    updateProgressBar(5, 'PDF wird initialisiert...');
+
     try {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        
         let fullText = '';
-        let useOCR = false;
+        const totalPages = pdf.numPages;
+        let currentPage = 0;
 
-        // 1. Text Extraction Attempt
-        for (let i = 1; i <= pdf.numPages; i++) {
+        updateProgressBar(10, `Verarbeite ${totalPages} Seiten...`);
+
+        // Seitenverarbeitung mit Fortschritt
+        for (let i = 1; i <= totalPages; i++) {
+            currentPage = i;
+            const pageProgress = (currentPage / totalPages) * 80 + 10; // 10% - 90%
+            
+            updateProgressBar(pageProgress, `Seite ${i} von ${totalPages} wird analysiert...`);
+
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
 
-            // Check if page has significant text
+            // Prüfen, ob Seite Text oder Bild ist
             if (textContent.items.length < 5) {
-                useOCR = true;
-                console.log(`Seite ${i} scheint ein Bild zu sein. Aktiviere OCR...`);
-
-                // Render Page to Canvas for OCR
+                updateProgressBar(pageProgress, `Seite ${i}: OCR wird durchgeführt...`);
+                
                 const viewport = page.getViewport({ scale: 2.0 });
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
@@ -272,9 +304,14 @@ async function handlePDFUpload(event) {
 
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
 
-                // Perform OCR
+                // OCR mit Fortschritts-Callback
                 const { data: { text } } = await Tesseract.recognize(canvas, 'deu', {
-                    logger: m => console.log(m)
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const ocrProgress = (currentPage - 1 + m.progress) / totalPages * 80 + 10;
+                            updateProgressBar(ocrProgress, `Seite ${i}: OCR ${Math.round(m.progress * 100)}%`);
+                        }
+                    }
                 });
                 fullText += text + '\n';
             } else {
@@ -283,20 +320,33 @@ async function handlePDFUpload(event) {
             }
         }
 
+        updateProgressBar(95, 'Termine werden erstellt...');
+        
         console.log("Extrahierter Text:", fullText);
         const newAppointments = parseSmartAppointments(fullText);
 
         if (newAppointments.length > 0) {
             saveAppointments(newAppointments);
             renderAppointments(newAppointments);
-            alert(`${newAppointments.length} Termine erfolgreich importiert!`);
+            updateProgressBar(100, 'Fertig!');
+            
+            // Kurz anzeigen, dann ausblenden
+            setTimeout(() => {
+                hideProgressBar();
+                alert(`${newAppointments.length} Termine erfolgreich importiert!`);
+            }, 800);
         } else {
+            hideProgressBar();
             alert('Keine Termine gefunden. Bitte prüfen Sie die Qualität des Scans.');
         }
 
     } catch (error) {
         console.error('Fehler beim PDF-Import:', error);
+        hideProgressBar();
         alert('Fehler beim Lesen der PDF-Datei: ' + error.message);
+    } finally {
+        // Input zurücksetzen, damit dieselbe Datei erneut ausgewählt werden kann
+        event.target.value = '';
     }
 }
 
