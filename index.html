@@ -99,10 +99,18 @@
         </section>
 
         <section id="view-termine" class="view hidden">
-            <div class="placeholder-content">
-                <h3>Meine Termine</h3>
-                <p>Hier erscheint der Kalender (Offline verfügbar).</p>
+            <h3 class="view-title">Meine Termine</h3>
+
+            <div class="upload-box">
+                <input type="file" id="pdfUpload" accept="application/pdf" hidden>
+                
+                <button class="upload-btn" onclick="document.getElementById('pdfUpload').click()">
+                    <span class="material-icons-round">upload_file</span>
+                    Reha-Plan PDF hochladen
+                </button>
             </div>
+
+            <div id="pdfList" class="pdf-list"></div>
         </section>
         
         <section id="view-doku" class="view hidden">
