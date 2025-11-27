@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     loadUserData();
     initAppointments();
-     registerServiceWorker();
+    registerServiceWorker();
 });
 
 // Navigation Logic
@@ -175,90 +175,144 @@ async function handlePDFUpload(event) {
 
 function parseSmartAppointments(text) {
     const appointments = [];
+    const lines = text.split('\n');
 
-    // Normalisierung: Mehrfache Leerzeichen entfernen, Zeilenumbrüche vereinheitlichen
-    const cleanText = text.replace(/\s+/g, ' ');
+    let currentDate = null;
 
-    // Regex für Datum (DD.MM.YYYY oder DD.MM.YY)
-    const dateRegex = /(\d{1,2})\.(\d{1,2})\.(\d{2,4})/g;
-    // Regex für Zeit (HH:MM)
-    const timeRegex = /(\d{1,2}):(\d{2})/g;
+    // Regex für Datums-Block (z.B. "Montag 30.06.2025" oder nur "30.06.2025")
+    // Wir suchen nach einem Datum am Anfang oder Ende einer Zeile, oft mit Wochentag davor
+    const dateBlockRegex = /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)?.*(\d{2}\.\d{2}\.\d{4})/;
 
-    let match;
-    // Wir suchen nach jedem Datum im Text
-    while ((match = dateRegex.exec(cleanText)) !== null) {
-        const dateStr = match[0];
-        let day = parseInt(match[1]);
-        let month = parseInt(match[2]);
-        let year = parseInt(match[3]);
+    // Regex für Zeilenstart mit Zeit (HH:MM)
+    // Erwartet, dass die Zeile mit der Uhrzeit beginnt
+    const timeRowRegex = /^\s*(\d{1,2}:\d{2})(?:\s*(?:-|bis)\s*(\d{1,2}:\d{2}))?/;
 
-        if (year < 100) year += 2000; // 25 -> 2025
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
 
-        // Kontext-Fenster: Wir schauen uns den Text um das Datum herum an (z.B. +/- 100 Zeichen)
-        const windowStart = Math.max(0, match.index - 50);
-        const windowEnd = Math.min(cleanText.length, match.index + 150);
-        const contextText = cleanText.substring(windowStart, windowEnd);
-
-        // Suche nach Uhrzeit im Kontext
-        const timeMatch = contextText.match(timeRegex);
-        if (!timeMatch) continue; // Ohne Uhrzeit ist es wohl kein Termin
-        const timeStr = timeMatch[0];
-
-        // Smart Extraction: Suche nach Keywords im Kontext
-        let location = "Raum unbekannt";
-        let therapist = "Therapeut unbekannt";
-        let title = "Termin";
-        let details = "";
-
-        // 1. Ort finden (Raum, Etage, Haus)
-        const locMatch = contextText.match(/(Raum|Zimmer|Etage|Haus)\s*(\d+[a-zA-Z]*)/i);
-        if (locMatch) location = locMatch[0];
-
-        // 2. Therapeut finden (Hr., Fr., Dr.)
-        const therapMatch = contextText.match(/(Hr\.|Fr\.|Dr\.|Therapeut)\s+([A-ZÄÖÜ][a-zäöü]+)/);
-        if (therapMatch) therapist = therapMatch[0];
-
-        // 3. Behandlungstyp raten (Keywords)
-        const therapies = ["Physio", "Ergo", "Massage", "Lymphdrainage", "KG", "MT", "Krankengymnastik"];
-        for (const t of therapies) {
-            if (contextText.toLowerCase().includes(t.toLowerCase())) {
-                title = t;
-                if (t === "KG") title = "Krankengymnastik";
-                if (t === "MT") title = "Manuelle Therapie";
-                break;
-            }
+        // 1. Prüfen auf Datums-Block
+        const dateMatch = line.match(dateBlockRegex);
+        if (dateMatch) {
+            // Wenn wir ein Datum finden, setzen wir den "currentDate" Kontext
+            // Aber Vorsicht: Manchmal steht ein Datum auch im Footer/Header.
+            // Wir nehmen an, dass ein Datums-Block "wichtig" aussieht oder allein steht.
+            // Fürs erste nehmen wir jedes gefundene Datum als neuen Blockstart.
+            currentDate = dateMatch[1];
+            console.log("Neuer Datums-Block gefunden:", currentDate);
+            continue;
         }
 
-        // 4. Details (Mitbringen)
-        if (contextText.toLowerCase().includes("handtuch")) details += "Handtuch ";
-        if (contextText.toLowerCase().includes("laken")) details += "Laken ";
-        if (details === "") details = "Bitte pünktlich erscheinen.";
+        // 2. Prüfen auf Termin-Zeile (nur wenn wir ein Datum haben)
+        if (currentDate) {
+            const timeMatch = line.match(timeRowRegex);
+            if (timeMatch) {
+                const startTime = timeMatch[1];
+                const endTime = timeMatch[2] || "";
+                const timeDisplay = endTime ? `${startTime} - ${endTime}` : startTime;
 
-        // Duplikate vermeiden (gleiches Datum + gleiche Zeit)
-        const isDuplicate = appointments.some(a => a.date === dateStr && a.time === timeStr);
-        if (!isDuplicate) {
-            appointments.push({
-                id: Date.now() + Math.random(),
-                date: `${day.toString().padStart(2, '0')}.${month.toString().padStart(2, '0')}.${year}`,
-                time: timeStr.padStart(5, '0'), // 9:00 -> 09:00
-                title: title,
-                location: location,
-                therapist: therapist,
-                details: details.trim()
-            });
+                // Rest der Zeile analysieren
+                // Wir entfernen die Zeit vom Anfang
+                let restText = line.replace(timeRowRegex, '').trim();
+
+                // Smart Extraction aus dem Rest-Text
+                let location = "Raum unbekannt";
+                let therapist = "Mitarbeiter unbekannt";
+                let title = "Termin"; // Fallback
+
+                // Strategie: Wir suchen bekannte Muster und "schneiden" sie raus oder identifizieren sie.
+
+                // A. Mitarbeiter (Hr. / Fr. / Dr.)
+                const therapMatch = restText.match(/(?:Hr\.|Fr\.|Dr\.|Therapeut)\s+([A-ZÄÖÜ][a-zäöü]+(?:-[A-ZÄÖÜ][a-zäöü]+)?)/);
+                if (therapMatch) {
+                    therapist = therapMatch[0];
+                    // Optional: Entfernen aus restText, um Titel besser zu finden?
+                    // restText = restText.replace(therapMatch[0], ''); 
+                }
+
+                // B. Ort (Raum X)
+                const locMatch = restText.match(/(?:Raum|Zimmer|Etage|Haus)\s*(\d+[a-zA-Z]*)/i);
+                if (locMatch) {
+                    location = locMatch[0];
+                }
+
+                // C. Leistung / Titel
+                // Alles was nicht Zeit, Ort oder Mitarbeiter ist, ist wahrscheinlich die Leistung.
+                // Wir nutzen wieder unsere Keyword-Liste, um den "Kern" der Leistung zu finden.
+                const therapies = ["Physio", "Ergo", "Massage", "Lymphdrainage", "KG", "MT", "Krankengymnastik", "Einzel", "Gruppe", "Fango", "Heißluft"];
+                let foundTherapy = [];
+                for (const t of therapies) {
+                    if (restText.toLowerCase().includes(t.toLowerCase())) {
+                        // Wir mappen Abkürzungen auf Langformen
+                        let fullTitle = t;
+                        if (t === "KG") fullTitle = "Krankengymnastik";
+                        if (t === "MT") fullTitle = "Manuelle Therapie";
+                        foundTherapy.push(fullTitle);
+                    }
+                }
+
+                if (foundTherapy.length > 0) {
+                    // Wir nehmen die gefundenen Begriffe als Titel (z.B. "Krankengymnastik Einzel")
+                    // Duplikate entfernen
+                    title = [...new Set(foundTherapy)].join(' ');
+                } else {
+                    // Fallback: Wenn wir keine Keywords finden, nehmen wir den Text zwischen Zeit und (Ort/Mitarbeiter)
+                    // Das ist etwas riskant, aber besser als "Termin".
+                    // Wir nehmen einfach die ersten 3 Wörter des Resttextes als Titel.
+                    const words = restText.split(/\s+/);
+                    title = words.slice(0, 3).join(' ');
+                }
+
+                // Details (Mitbringen)
+                let details = "";
+                if (restText.toLowerCase().includes("handtuch")) details += "Handtuch ";
+                if (restText.toLowerCase().includes("laken")) details += "Laken ";
+                if (details === "") details = "Bitte pünktlich erscheinen.";
+
+                // Termin hinzufügen
+                // Duplikate Check (Datum + Startzeit)
+                const isDuplicate = appointments.some(a => a.date === currentDate && a.startTime === startTime);
+                if (!isDuplicate) {
+                    appointments.push({
+                        id: Date.now() + Math.random(),
+                        date: currentDate,
+                        time: timeDisplay,
+                        startTime: startTime,
+                        title: title,
+                        location: location,
+                        therapist: therapist,
+                        details: details.trim(),
+                        completed: false
+                    });
+                }
+            }
         }
     }
 
     return appointments.sort((a, b) => {
-        const dateA = new Date(a.date.split('.').reverse().join('-') + 'T' + a.time);
-        const dateB = new Date(b.date.split('.').reverse().join('-') + 'T' + b.time);
+        // Datum formatieren für Sortierung: DD.MM.YYYY -> YYYY-MM-DD
+        const parseDate = (d) => d.split('.').reverse().join('-');
+        const dateA = new Date(`${parseDate(a.date)}T${a.startTime}`);
+        const dateB = new Date(`${parseDate(b.date)}T${b.startTime}`);
         return dateA - dateB;
     });
 }
 
 function saveAppointments(appointments) {
-    // Bestehende Termine laden und mergen (optional), hier überschreiben wir erstmal
     localStorage.setItem('rehaAppts', JSON.stringify(appointments));
+}
+
+function toggleAppointmentStatus(id) {
+    const storedAppts = localStorage.getItem('rehaAppts');
+    if (storedAppts) {
+        const appointments = JSON.parse(storedAppts);
+        const appt = appointments.find(a => a.id === id);
+        if (appt) {
+            appt.completed = !appt.completed;
+            saveAppointments(appointments);
+            renderAppointments(appointments);
+        }
+    }
 }
 
 function renderAppointments(appointments) {
@@ -282,18 +336,32 @@ function renderAppointments(appointments) {
         const monthName = dateObj.toLocaleString('de-DE', { month: 'short' });
 
         const card = document.createElement('div');
-        card.className = 'appointment-card';
+        card.className = `appointment-card ${appt.completed ? 'completed' : ''}`;
+
+        // Prevent card expansion when clicking the checkbox
+        const checkboxId = `check-${appt.id}`;
+
         card.innerHTML = `
             <div class="appt-summary">
-                <div class="appt-date-box">
-                    <span class="appt-day">${day}</span>
-                    <span class="appt-month">${monthName}</span>
+                <div class="appt-left-group" onclick="this.closest('.appointment-card').classList.toggle('expanded')">
+                    <div class="appt-date-box">
+                        <span class="appt-day">${day}</span>
+                        <span class="appt-month">${monthName}</span>
+                    </div>
+                    <div class="appt-main-info">
+                        <span class="appt-time">${appt.time} Uhr</span>
+                        <span class="appt-title">${appt.title}</span>
+                    </div>
                 </div>
-                <div class="appt-main-info">
-                    <span class="appt-time">${appt.time} Uhr</span>
-                    <span class="appt-title">${appt.title}</span>
+                
+                <div class="appt-actions">
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="${checkboxId}" ${appt.completed ? 'checked' : ''}>
+                        <label for="${checkboxId}" class="custom-checkbox material-icons-round">
+                            ${appt.completed ? 'check_circle' : 'radio_button_unchecked'}
+                        </label>
+                    </div>
                 </div>
-                <span class="material-icons-round expand-icon">expand_more</span>
             </div>
             <div class="appt-details">
                 <div class="detail-row">
@@ -302,7 +370,7 @@ function renderAppointments(appointments) {
                 </div>
                 <div class="detail-row">
                     <span class="material-icons-round">person</span>
-                    <span>${appt.therapist}</span>
+                    <span><strong>Mitarbeiter:</strong> ${appt.therapist}</span>
                 </div>
                 <div class="detail-row">
                     <span class="material-icons-round">info</span>
@@ -311,8 +379,18 @@ function renderAppointments(appointments) {
             </div>
         `;
 
-        card.addEventListener('click', () => {
-            card.classList.toggle('expanded');
+        // Event Listener for Checkbox
+        const checkbox = card.querySelector('input[type="checkbox"]');
+        const label = card.querySelector('label');
+
+        checkbox.addEventListener('change', (e) => {
+            e.stopPropagation(); // Prevent card expansion
+            toggleAppointmentStatus(appt.id);
+        });
+
+        label.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent card expansion
+            // Label click triggers input change automatically, but we stop propagation here
         });
 
         container.appendChild(card);
