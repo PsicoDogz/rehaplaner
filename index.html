@@ -10,7 +10,7 @@
     <meta name="theme-color" content="#2563EB">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
@@ -87,22 +87,44 @@
         <section id="view-chat" class="view hidden">
             <h3 class="view-title">Ansprechpartner</h3>
             <div class="contact-selector">
-                <button class="contact-btn active">
+                <button class="contact-btn active" data-contact="verwaltung">
                     <span class="material-icons-round">apartment</span>
                     Verwaltung
                 </button>
-                <button class="contact-btn">
+                <button class="contact-btn" data-contact="arzt">
                     <span class="material-icons-round">person</span>
                     Arzt
                 </button>
-                <button class="contact-btn">
+                <button class="contact-btn" data-contact="fahrer">
                     <span class="material-icons-round">local_shipping</span>
                     Fahrer
                 </button>
             </div>
-            <div class="chat-area empty-state">
-                <p>Starten Sie eine Unterhaltung mit der Verwaltung.</p>
-            </div>
+
+            <!-- Nachrichtenliste -->
+            <div class="chat-area" id="chat-messages"></div>
+
+            <!-- Eingabezeile -->
+            <form class="chat-input" id="chat-form">
+                <input
+                    type="text"
+                    id="chat-message-input"
+                    placeholder="Nachricht eingeben..."
+                    autocomplete="off"
+                />
+                <button type="submit" class="icon-btn" aria-label="Nachricht senden">
+                    <span class="material-icons-round">send</span>
+                </button>
+                <!-- optional: JSON-Export -->
+                <button
+                    type="button"
+                    id="chat-download-btn"
+                    class="icon-btn"
+                    aria-label="Chat als JSON herunterladen"
+                >
+                    <span class="material-icons-round">download</span>
+                </button>
+            </form>
         </section>
 
         <section id="view-termine" class="view hidden">
@@ -128,6 +150,13 @@
             <div class="placeholder-content">
                 <h3>Dokumente</h3>
                 <p>Ihre Befunde und Pläne (Offline verfügbar).</p>
+            </div>
+        </section>
+
+        <section id="view-training" class="view hidden">
+            <div class="placeholder-content">
+                <h3>Training</h3>
+                <p>Ihre Trainingsübungen erscheinen hier.</p>
             </div>
         </section>
 
