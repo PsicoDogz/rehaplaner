@@ -1,4 +1,3 @@
-
 // app.js
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -254,52 +253,6 @@ function renderChat(contactKey) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function renderChat(contactKey) {
-    const messagesContainer = document.getElementById('chat-messages');
-    if (!messagesContainer) return;
-
-    const messages = chatData[contactKey] || [];
-
-    if (messages.length === 0) {
-        messagesContainer.innerHTML = `<p style="color:#6B7280;">Noch keine Nachrichten. Schreiben Sie eine erste Nachricht.</p>`;
-        return;
-    }
-
-    messagesContainer.innerHTML = messages.map(m => {
-        const timeStr = new Date(m.timestamp).toLocaleTimeString('de-DE', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-
-        const cls = m.from === 'user' ? 'from-user' : 'from-contact';
-        return `
-            <div class="chat-message ${cls}">
-                <div class="chat-bubble">${escapeHtml(m.text)}</div>
-                <span class="chat-time">${timeStr}</span>
-            </div>
-        `;
-    }).join('');
-
-    // Immer nach unten scrollen
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-function exportChatAsJson(contactKey) {
-    const data = chatData[contactKey] || [];
-    const jsonStr = JSON.stringify(data, null, 2);
-
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `chat-${contactKey}.json`; // z.B. chat-verwaltung.json
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-}
-
 // Navigation Logic
 function initNavigation() {
     const navItems = document.querySelectorAll('.nav-item, .fab-btn');
@@ -527,10 +480,6 @@ function parseSmartAppointments(text) {
         // 1. Prüfen auf Datums-Block
         const dateMatch = line.match(dateBlockRegex);
         if (dateMatch) {
-            // Wenn wir ein Datum finden, setzen wir den "currentDate" Kontext
-            // Aber Vorsicht: Manchmal steht ein Datum auch im Footer/Header.
-            // Wir nehmen an, dass ein Datums-Block "wichtig" aussieht oder allein steht.
-            // Fürs erste nehmen wir jedes gefundene Datum als neuen Blockstart.
             currentDate = dateMatch[1];
             console.log("Neuer Datums-Block gefunden:", currentDate);
             continue;
@@ -545,7 +494,6 @@ function parseSmartAppointments(text) {
                 const timeDisplay = endTime ? `${startTime} - ${endTime}` : startTime;
 
                 // Rest der Zeile analysieren
-                // Wir entfernen die Zeit vom Anfang
                 let restText = line.replace(timeRowRegex, '').trim();
 
                 // Smart Extraction aus dem Rest-Text
@@ -553,14 +501,10 @@ function parseSmartAppointments(text) {
                 let therapist = "Mitarbeiter unbekannt";
                 let title = "Termin"; // Fallback
 
-                // Strategie: Wir suchen bekannte Muster und "schneiden" sie raus oder identifizieren sie.
-
                 // A. Mitarbeiter (Hr. / Fr. / Dr.)
                 const therapMatch = restText.match(/(?:Hr\.|Fr\.|Dr\.|Therapeut)\s+([A-ZÄÖÜ][a-zäöü]+(?:-[A-ZÄÖÜ][a-zäöü]+)?)/);
                 if (therapMatch) {
                     therapist = therapMatch[0];
-                    // Optional: Entfernen aus restText, um Titel besser zu finden?
-                    // restText = restText.replace(therapMatch[0], ''); 
                 }
 
                 // B. Ort (Raum X)
@@ -570,13 +514,10 @@ function parseSmartAppointments(text) {
                 }
 
                 // C. Leistung / Titel
-                // Alles was nicht Zeit, Ort oder Mitarbeiter ist, ist wahrscheinlich die Leistung.
-                // Wir nutzen wieder unsere Keyword-Liste, um den "Kern" der Leistung zu finden.
                 const therapies = ["Physio", "Ergo", "Massage", "Lymphdrainage", "KG", "MT", "Krankengymnastik", "Einzel", "Gruppe", "Fango", "Heißluft"];
                 let foundTherapy = [];
                 for (const t of therapies) {
                     if (restText.toLowerCase().includes(t.toLowerCase())) {
-                        // Wir mappen Abkürzungen auf Langformen
                         let fullTitle = t;
                         if (t === "KG") fullTitle = "Krankengymnastik";
                         if (t === "MT") fullTitle = "Manuelle Therapie";
@@ -585,13 +526,8 @@ function parseSmartAppointments(text) {
                 }
 
                 if (foundTherapy.length > 0) {
-                    // Wir nehmen die gefundenen Begriffe als Titel (z.B. "Krankengymnastik Einzel")
-                    // Duplikate entfernen
                     title = [...new Set(foundTherapy)].join(' ');
                 } else {
-                    // Fallback: Wenn wir keine Keywords finden, nehmen wir den Text zwischen Zeit und (Ort/Mitarbeiter)
-                    // Das ist etwas riskant, aber besser als "Termin".
-                    // Wir nehmen einfach die ersten 3 Wörter des Resttextes als Titel.
                     const words = restText.split(/\s+/);
                     title = words.slice(0, 3).join(' ');
                 }
@@ -603,7 +539,6 @@ function parseSmartAppointments(text) {
                 if (details === "") details = "Bitte pünktlich erscheinen.";
 
                 // Termin hinzufügen
-                // Duplikate Check (Datum + Startzeit)
                 const isDuplicate = appointments.some(a => a.date === currentDate && a.startTime === startTime);
                 if (!isDuplicate) {
                     appointments.push({
@@ -623,7 +558,6 @@ function parseSmartAppointments(text) {
     }
 
     return appointments.sort((a, b) => {
-        // Datum formatieren für Sortierung: DD.MM.YYYY -> YYYY-MM-DD
         const parseDate = (d) => d.split('.').reverse().join('-');
         const dateA = new Date(`${parseDate(a.date)}T${a.startTime}`);
         const dateB = new Date(`${parseDate(b.date)}T${b.startTime}`);
@@ -671,7 +605,6 @@ function renderAppointments(appointments) {
         const card = document.createElement('div');
         card.className = `appointment-card ${appt.completed ? 'completed' : ''}`;
 
-        // Prevent card expansion when clicking the checkbox
         const checkboxId = `check-${appt.id}`;
 
         card.innerHTML = `
@@ -712,18 +645,16 @@ function renderAppointments(appointments) {
             </div>
         `;
 
-        // Event Listener for Checkbox
         const checkbox = card.querySelector('input[type="checkbox"]');
         const label = card.querySelector('label');
 
         checkbox.addEventListener('change', (e) => {
-            e.stopPropagation(); // Prevent card expansion
+            e.stopPropagation();
             toggleAppointmentStatus(appt.id);
         });
 
         label.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent card expansion
-            // Label click triggers input change automatically, but wir stoppen hier die Propagation
+            e.stopPropagation();
         });
 
         container.appendChild(card);
