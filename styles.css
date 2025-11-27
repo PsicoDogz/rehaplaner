@@ -614,15 +614,15 @@ main {
 
 .chat-input {
     position: fixed;
-    bottom: 85px;
+    bottom: 78px;
     left: 0;
     right: 0;
-    
+
     display: flex;
     gap: 8px;
     align-items: center;
 
-    padding: 10px 16px;
+    padding: 8px 16px;
     background: var(--bg-light);
     z-index: 999;
 }
