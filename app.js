@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     loadUserData();
     registerServiceWorker();
+    initPDFImport();
 });
 
 // Navigation Logic
@@ -67,6 +68,71 @@ function loadUserData() {
 
     // In einer echten App würde hier ein Fetch zum Server passieren
     // und bei Erfolg der localStorage aktualisiert werden.
+}
+// ---------------------------
+// PDF IMPORT (Termine-Tab)
+// ---------------------------
+
+function initPDFImport() {
+    const pdfInput = document.getElementById('pdfUpload');
+    if (!pdfInput) return;
+
+    pdfInput.addEventListener('change', handlePDFUpload);
+    loadStoredPDFs();
+}
+
+function handlePDFUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        const pdfData = {
+            name: file.name,
+            data: e.target.result,
+            uploaded: new Date().toISOString()
+        };
+
+        const stored = JSON.parse(localStorage.getItem('pdfFiles') || "[]");
+        stored.push(pdfData);
+        localStorage.setItem('pdfFiles', JSON.stringify(stored));
+
+        loadStoredPDFs();
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function loadStoredPDFs() {
+    const container = document.getElementById('pdfList');
+    if (!container) return;
+
+    const list = JSON.parse(localStorage.getItem('pdfFiles') || "[]");
+    container.innerHTML = "";
+
+    list.forEach((pdf, index) => {
+        const div = document.createElement('div');
+        div.classList.add('pdf-item');
+
+        div.innerHTML = `
+            <strong>${pdf.name}</strong><br>
+            <button onclick="openPDF(${index})">Öffnen</button>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+function openPDF(index) {
+    const list = JSON.parse(localStorage.getItem('pdfFiles') || "[]");
+    const pdf = list[index];
+    if (!pdf) return;
+
+    const win = window.open();
+    win.document.write(`
+        <embed width="100%" height="100%" src="${pdf.data}" type="application/pdf">
+    `);
 }
 
 function renderData(data) {
