@@ -1,3 +1,4 @@
+
 // app.js
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8,24 +9,54 @@ document.addEventListener('DOMContentLoaded', () => {
     registerServiceWorker();
 });
 
-let currentChatKey = 'verwaltung';
-let chatData = {}; // { verwaltung: [messages], arzt: [...], fahrer: [...] }
+// --- Chat-State & Helper-Funktionen (JSON-basiert, kein Supabase) ---
 
-function saveChats() {
-    localStorage.setItem('rehaChats', JSON.stringify(chatData));
+let currentChatKey = 'verwaltung'; // aktueller Raum: verwaltung | therapeut | fahrer
+let chatData = {
+    verwaltung: [],
+    therapeut: [],
+    fahrer: []
+};
+
+// aktueller Nutzer dieses Browsers
+let currentUser = {
+    name: 'Hans',    // Default wird aus rehaUser geladen
+    role: 'patient'  // patient | verwaltung | therapeut | fahrer
+};
+
+const API_BASE = '/api'; // Backend-Endpunkte
+
+function saveCurrentUser() {
+    localStorage.setItem('rehaChatUser', JSON.stringify(currentUser));
 }
 
-function loadChats() {
-    const stored = localStorage.getItem('rehaChats');
-    if (stored) {
-        chatData = JSON.parse(stored);
-    } else {
-        chatData = {};
+function loadCurrentUser() {
+    // 1. Falls der Chat-User schon explizit gespeichert wurde
+    const storedChatUser = localStorage.getItem('rehaChatUser');
+    if (storedChatUser) {
+        try {
+            currentUser = JSON.parse(storedChatUser);
+            return;
+        } catch (e) {
+            console.warn('Konnte rehaChatUser nicht parsen, nutze Fallback.', e);
+        }
     }
-    // Standard-Chats sicherstellen
-    ['verwaltung', 'arzt', 'fahrer'].forEach(key => {
-        if (!chatData[key]) chatData[key] = [];
-    });
+
+    // 2. Fallback: Patientendaten (Hans) aus rehaUser nehmen
+    const storedRehaUser = localStorage.getItem('rehaUser');
+    if (storedRehaUser) {
+        try {
+            const userData = JSON.parse(storedRehaUser);
+            currentUser.name = userData.name || 'Hans';
+        } catch (e) {
+            currentUser.name = 'Hans';
+        }
+    } else {
+        currentUser.name = 'Hans';
+    }
+
+    currentUser.role = 'patient';
+    saveCurrentUser();
 }
 
 function escapeHtml(str) {
@@ -38,14 +69,113 @@ function escapeHtml(str) {
     }[c]));
 }
 
-function initChat() {
-    loadChats();
+function formatRole(role) {
+    switch (role) {
+        case 'verwaltung': return 'Verwaltung';
+        case 'therapeut':  return 'Therapeut';
+        case 'fahrer':     return 'Fahrer';
+        case 'patient':    return 'Patient';
+        default:           return role || '';
+    }
+}
 
+function askForRole() {
+    let role = prompt(
+        'Bitte Rolle für diesen Namen wählen (Verwaltung / Therapeut / Fahrer):',
+        (currentUser.role && currentUser.role !== 'patient') ? formatRole(currentUser.role) : ''
+    );
+    if (!role) {
+        // Keine Eingabe => alte Rolle behalten
+        return currentUser.role;
+    }
+
+    role = role.trim().toLowerCase();
+
+    if (role === 'verwaltung' || role === 'therapeut' || role === 'fahrer') {
+        return role;
+    }
+
+    alert('Ungültige Rolle. Erlaubt sind: Verwaltung, Therapeut oder Fahrer. Vorherige Rolle bleibt bestehen.');
+    return currentUser.role;
+}
+
+function handleNameChange(e) {
+    const newName = e.target.value.trim();
+    if (!newName) {
+        // leere Eingabe -> alten Namen wiederherstellen
+        e.target.value = currentUser.name;
+        return;
+    }
+    if (newName === currentUser.name) return;
+
+    currentUser.name = newName;
+
+    // Wenn der Name geändert wird: nach Rolle fragen
+    const newRole = askForRole();
+    currentUser.role = newRole;
+    saveCurrentUser();
+}
+
+// Nachrichten aus Backend / JSON holen
+async function fetchMessages(contactKey) {
+    try {
+        const res = await fetch(`${API_BASE}/chat?room=${encodeURIComponent(contactKey)}`);
+        if (!res.ok) {
+            throw new Error('HTTP ' + res.status);
+        }
+        const data = await res.json();
+        chatData[contactKey] = Array.isArray(data) ? data : [];
+        if (contactKey === currentChatKey) {
+            renderChat(contactKey);
+        }
+    } catch (err) {
+        console.error('Fehler beim Laden der Nachrichten:', err);
+    }
+}
+
+// Nachricht an Backend senden
+async function sendMessage(contactKey, text) {
+    try {
+        await fetch(`${API_BASE}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                room: contactKey,
+                fromName: currentUser.name,
+                fromRole: currentUser.role,
+                text: text
+            })
+        });
+
+        // Direkt danach neu laden, damit es "live" wirkt
+        await fetchMessages(contactKey);
+    } catch (err) {
+        console.error('Fehler beim Senden der Nachricht:', err);
+    }
+}
+
+function initChat() {
     const chatButtons = document.querySelectorAll('.contact-btn');
-    const messagesContainer = document.getElementById('chat-messages');
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-message-input');
-    const downloadBtn = document.getElementById('chat-download-btn');
+    const nameInput = document.getElementById('chat-name-input');
+
+    // aktuellen Nutzer laden
+    loadCurrentUser();
+
+    // Name-Feld initialisieren
+    if (nameInput) {
+        nameInput.value = currentUser.name;
+        nameInput.addEventListener('change', handleNameChange);
+        // optional auch bei Blur
+        nameInput.addEventListener('blur', (e) => {
+            if (e.target.value.trim() === '') {
+                e.target.value = currentUser.name;
+            }
+        });
+    }
 
     // Aktuellen Chat aus aktivem Button bestimmen
     const activeBtn = document.querySelector('.contact-btn.active');
@@ -53,49 +183,75 @@ function initChat() {
         currentChatKey = activeBtn.dataset.contact;
     }
 
-    // Nachrichten für aktuellen Chat anzeigen
-    renderChat(currentChatKey);
+    // Erste Nachrichten laden
+    fetchMessages(currentChatKey);
 
-    // Kontaktwechsel: anderen Chat laden
+    // Polling für "Live"-Effekt (alle 2 Sekunden)
+    setInterval(() => {
+        fetchMessages(currentChatKey);
+    }, 2000);
+
+    // Kontaktwechsel: anderen Chat-Raum laden
     chatButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             chatButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
             const contactKey = btn.dataset.contact;
-            if (!chatData[contactKey]) chatData[contactKey] = [];
             currentChatKey = contactKey;
-            renderChat(currentChatKey);
+            fetchMessages(currentChatKey);
         });
     });
 
     // Nachricht senden
     if (chatForm) {
-        chatForm.addEventListener('submit', (e) => {
+        chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = chatInput.value.trim();
             if (!text) return;
 
-            const msg = {
-                id: Date.now(),
-                from: 'user',
-                text: text,
-                timestamp: new Date().toISOString()
-            };
-
-            chatData[currentChatKey].push(msg);
-            saveChats();
-            renderChat(currentChatKey);
+            await sendMessage(currentChatKey, text);
             chatInput.value = '';
         });
     }
+}
 
-    // JSON-Export für aktuellen Chat
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', () => {
-            exportChatAsJson(currentChatKey);
-        });
+function renderChat(contactKey) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+
+    const messages = chatData[contactKey] || [];
+
+    if (messages.length === 0) {
+        messagesContainer.innerHTML = `<p style="color:#6B7280;">Noch keine Nachrichten. Schreiben Sie eine erste Nachricht.</p>`;
+        return;
     }
+
+    messagesContainer.innerHTML = messages.map(m => {
+        const timeStr = new Date(m.timestamp).toLocaleTimeString('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const isOwn = (m.fromName === currentUser.name) && (m.fromRole === currentUser.role);
+        const cls = isOwn ? 'from-user' : 'from-contact';
+        const authorLabel = m.fromName
+            ? `${escapeHtml(m.fromName)}${m.fromRole ? ' (' + escapeHtml(formatRole(m.fromRole)) + ')' : ''}`
+            : '';
+
+        return `
+            <div class="chat-message ${cls}">
+                <div class="chat-bubble">
+                    ${authorLabel ? `<div class="chat-author">${authorLabel}</div>` : ''}
+                    <div>${escapeHtml(m.text)}</div>
+                </div>
+                <span class="chat-time">${timeStr}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Immer nach unten scrollen
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
 function renderChat(contactKey) {
