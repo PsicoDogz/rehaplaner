@@ -118,3 +118,32 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
 }
 .fab-btn .material-icons-round { font-size: 32px; }
 .fab-label { font-size: 0.75rem; color: var(--primary-blue); font-weight: bold; margin-top: 4px; }
+.upload-box {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.upload-btn {
+    background: var(--primary-blue);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.pdf-list {
+    margin-top: 20px;
+}
+
+.pdf-item {
+    background: white;
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    margin-bottom: 10px;
+}
