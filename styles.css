@@ -612,13 +612,21 @@ main {
     margin-top: 2px;
 }
 
-/* Chat Input */
 .chat-input {
-    margin-top: 10px;
+    position: fixed;
+    bottom: 85px;
+    left: 0;
+    right: 0;
+    
     display: flex;
     gap: 8px;
     align-items: center;
+
+    padding: 10px 16px;
+    background: var(--bg-light);
+    z-index: 999;
 }
+
 
 .chat-input input {
     flex: 1;
