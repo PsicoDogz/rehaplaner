@@ -16,55 +16,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// --- Chat-State & Helper-Funktionen (JSON-basiert, kein Supabase) ---
+// --- Chat-State & Globale Variablen ---
 
-let currentChatKey = 'verwaltung'; // aktueller Raum: verwaltung | therapeut | fahrer
-let chatData = {
+let currentUserName = 'Hans';
+const currentUserRole = 'Patient';
+let activeContact = 'verwaltung';
+
+// Nachrichten-Speicher für die drei Kategorien
+const chatStorage = {
   verwaltung: [],
   therapeut: [],
   fahrer: []
 };
 
-// aktueller Nutzer dieses Browsers
-let currentUser = {
-  name: 'Hans',    // Default wird aus rehaUser geladen
-  role: 'patient'  // patient | verwaltung | therapeut | fahrer
-};
-
-function saveCurrentUser() {
-  localStorage.setItem('rehaChatUser', JSON.stringify(currentUser));
-}
-
-function loadCurrentUser() {
-  // 1. Falls der Chat-User schon explizit gespeichert wurde
-  const storedChatUser = localStorage.getItem('rehaChatUser');
-  if (storedChatUser) {
-    try {
-      currentUser = JSON.parse(storedChatUser);
-      return;
-    } catch (e) {
-      console.warn('Konnte rehaChatUser nicht parsen, nutze Fallback.', e);
-    }
-  }
-
-  // 2. Fallback: Patientendaten (Hans) aus rehaUser nehmen
-  const storedRehaUser = localStorage.getItem('rehaUser');
-  if (storedRehaUser) {
-    try {
-      const userData = JSON.parse(storedRehaUser);
-      currentUser.name = userData.name || 'Hans';
-    } catch (e) {
-      currentUser.name = 'Hans';
-    }
-  } else {
-    currentUser.name = 'Hans';
-  }
-
-  currentUser.role = 'patient';
-  saveCurrentUser();
-}
+// --- XSS-Schutz (wichtig für Sicherheit) ---
 
 function escapeHtml(str) {
+  if (!str) return '';
   return str.replace(/[&<>"']/g, c => ({
     '&': '&amp;',
     '<': '&lt;',
@@ -74,187 +42,145 @@ function escapeHtml(str) {
   }[c]));
 }
 
-function formatRole(role) {
-  const roleMap = {
-    'verwaltung': 'Verwaltung',
-    'therapeut': 'Therapeut',
-    'fahrer': 'Fahrer',
-    'patient': 'Patient'
-  };
-  return roleMap[role] || role || '';
-}
+// --- localStorage Funktionen (PERSISTENZ) ---
 
-function askForRole() {
-  let role = prompt(
-    'Bitte Rolle für diesen Namen wählen (Verwaltung / Therapeut / Fahrer):',
-    (currentUser.role && currentUser.role !== 'patient') ? formatRole(currentUser.role) : ''
-  );
-  if (!role) {
-    // Keine Eingabe => alte Rolle behalten
-    return currentUser.role;
-  }
-
-  role = role.trim().toLowerCase();
-
-  if (role === 'verwaltung' || role === 'therapeut' || role === 'fahrer') {
-    return role;
-  }
-
-  alert('Ungültige Rolle. Erlaubt sind: Verwaltung, Therapeut oder Fahrer. Vorherige Rolle bleibt bestehen.');
-  return currentUser.role;
-}
-
-function handleNameChange(e) {
-  const newName = e.target.value.trim();
-  if (!newName) {
-    e.target.value = currentUser.name; // Alten Wert wiederherstellen
-    return;
-  }
-  if (newName === currentUser.name) return;
-
-  currentUser.name = newName;
-  
-  // Nur nach Rolle fragen, wenn es "Hans" war (Standard)
-  if (currentUser.role === 'patient') {
-    const newRole = askForRole();
-    currentUser.role = newRole;
-  }
-  
-  saveCurrentUser();
-}
-
-// Lädt Chats aus LocalStorage
 function loadChatFromLocalStorage() {
-  const storageKey = `rehaChat_${currentChatKey}`;
-  const stored = localStorage.getItem(storageKey);
-  chatData[currentChatKey] = stored ? JSON.parse(stored) : [];
+  Object.keys(chatStorage).forEach(key => {
+    const stored = localStorage.getItem(`rehaChat_${key}`);
+    if (stored) {
+      try {
+        chatStorage[key] = JSON.parse(stored);
+      } catch (e) {
+        console.warn(`Konnte Chat-Historie für ${key} nicht laden`, e);
+        chatStorage[key] = [];
+      }
+    }
+  });
 }
 
-// Speichert Chats in LocalStorage
 function saveChatToLocalStorage(contactKey) {
-  const storageKey = `rehaChat_${contactKey}`;
-  localStorage.setItem(storageKey, JSON.stringify(chatData[contactKey]));
+  localStorage.setItem(`rehaChat_${contactKey}`, JSON.stringify(chatStorage[contactKey]));
 }
 
-// Lokales Senden ohne Backend
-function sendMessageLocal(contactKey, text) {
-  if (!text.trim()) return;
-  
-  const newMessage = {
-    id: Date.now() + Math.random(),
-    fromName: currentUser.name,
-    fromRole: currentUser.role,
-    text: text.trim(),
-    timestamp: new Date().toISOString()
-  };
-  
-  // In chatData speichern
-  if (!chatData[contactKey]) {
-    chatData[contactKey] = [];
-  }
-  chatData[contactKey].push(newMessage);
-  
-  // In LocalStorage persistieren
-  saveChatToLocalStorage(contactKey);
-  
-  // Neu rendern
-  renderChat(contactKey);
-}
+// --- Init-Funktion für Chat ---
 
 function initChat() {
-  // 1. User initial laden
-  loadCurrentUser();
-  
-  // 2. Name-Input mit Event Listener verbinden
+  // 1. Namens-Input initialisieren
   const nameInput = document.getElementById('chat-name-input');
   if (nameInput) {
-    nameInput.value = currentUser.name;
-    nameInput.addEventListener('change', handleNameChange);
-    nameInput.addEventListener('blur', handleNameChange);
+    nameInput.value = currentUserName;
+    nameInput.addEventListener('input', (e) => {
+      currentUserName = e.target.value.trim() || 'Hans';
+    });
   }
 
+  // 2. Chats aus localStorage laden
+  loadChatFromLocalStorage();
+  
   // 3. Kontakt-Buttons initialisieren
   const contactButtons = document.querySelectorAll('.contact-btn');
   contactButtons.forEach(button => {
     button.addEventListener('click', () => {
-      // Aktiven Button setzen
       document.querySelectorAll('.contact-btn').forEach(btn => btn.classList.remove('active'));
       button.classList.add('active');
       
-      // Aktuellen Chat wechseln
-      currentChatKey = button.dataset.contact;
-      
-      // Chats aus LocalStorage laden
-      loadChatFromLocalStorage();
-      
-      // Chat rendern
-      renderChat(currentChatKey);
+      activeContact = button.dataset.contact;
+      renderChatHistory();
     });
   });
 
   // 4. Form-Submit behandeln
   const chatForm = document.getElementById('chat-form');
-  const chatInput = document.getElementById('chat-message-input');
+  const chatMessageInput = document.getElementById('chat-message-input');
+  const chatMessages = document.getElementById('chat-messages');
   
-  if (chatForm && chatInput) {
+  if (chatForm && chatMessageInput) {
     chatForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const messageText = chatInput.value.trim();
-      if (messageText) {
-        sendMessageLocal(currentChatKey, messageText);
-        chatInput.value = '';
+      const text = chatMessageInput.value.trim();
+      
+      if (text !== '') {
+        // Eigene Nachricht speichern und anzeigen
+        const myMsg = {
+          name: currentUserName,
+          role: currentUserRole,
+          text: text,
+          type: 'sent',
+          timestamp: new Date().toISOString()
+        };
+        
+        chatStorage[activeContact].push(myMsg);
+        saveChatToLocalStorage(activeContact);
+        displayMessageOnScreen(myMsg);
+        chatMessageInput.value = '';
+
+        // Antwort-Simulation
+        setTimeout(() => {
+          const senderName = activeContact.charAt(0).toUpperCase() + activeContact.slice(1);
+          const reply = {
+            name: senderName,
+            role: activeContact === 'verwaltung' ? 'Verwaltung' : 
+                  activeContact === 'therapeut' ? 'Therapeut' : 'Fahrer',
+            text: `Ihre Nachricht an die Abteilung ${senderName} wurde empfangen.`,
+            type: 'received',
+            timestamp: new Date().toISOString()
+          };
+          
+          chatStorage[activeContact].push(reply);
+          saveChatToLocalStorage(activeContact);
+          displayMessageOnScreen(reply);
+        }, 800);
       }
     });
   }
 
-  // 5. Initiales Laden des aktiven Chats
-  loadChatFromLocalStorage();
-  renderChat(currentChatKey);
+  // 5. Initiales Rendern des aktiven Chats
   const activeButton = document.querySelector('.contact-btn.active');
   if (activeButton) {
-    currentChatKey = activeButton.dataset.contact;
-    loadChatFromLocalStorage();
-    renderChat(currentChatKey);
+    activeContact = activeButton.dataset.contact;
   }
+  renderChatHistory();
 }
 
-function renderChat(contactKey) {
-  const messagesContainer = document.getElementById('chat-messages');
-  if (!messagesContainer) return;
+// --- Render-Funktionen ---
 
-  const messages = chatData[contactKey] || [];
+function displayMessageOnScreen(msg) {
+  const chatMessages = document.getElementById('chat-messages');
+  if (!chatMessages) return;
+  
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `message-bubble ${msg.type}`;
+  
+  const timeStr = msg.timestamp ? 
+    new Date(msg.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) :
+    new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 
-  if (messages.length === 0) {
-    messagesContainer.innerHTML = `<p style="color:#6B7280;">Noch keine Nachrichten. Schreiben Sie eine erste Nachricht.</p>`;
-    return;
-  }
-
-  messagesContainer.innerHTML = messages.map(m => {
-    const timeStr = new Date(m.timestamp).toLocaleTimeString('de-DE', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    const isOwn = (m.fromName === currentUser.name) && (m.fromRole === currentUser.role);
-    const cls = isOwn ? 'from-user' : 'from-contact';
-    const authorLabel = m.fromName
-      ? `${escapeHtml(m.fromName)}${m.fromRole ? ' (' + escapeHtml(formatRole(m.fromRole)) + ')' : ''}`
-      : '';
-
-    return `
-      <div class="chat-message ${cls}">
-        <div class="chat-bubble">
-          ${authorLabel ? `<div class="chat-author">${authorLabel}</div>` : ''}
-          <div>${escapeHtml(m.text)}</div>
-        </div>
-        <span class="chat-time">${timeStr}</span>
-      </div>
-    `;
-  }).join('');
-
-  // Immer nach unten scrollen
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  msgDiv.innerHTML = `
+    <div class="message-info">
+      <small class="sender-name"><strong>${escapeHtml(msg.name)}</strong></small>
+      <small class="sender-role">(${escapeHtml(msg.role)})</small> 
+    </div>
+    <div class="message-text">${escapeHtml(msg.text)}</div>
+    <div class="message-time">${timeStr}</div>
+  `;
+  
+  chatMessages.appendChild(msgDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
+
+function renderChatHistory() {
+  const chatMessages = document.getElementById('chat-messages');
+  if (!chatMessages) return;
+  
+  chatMessages.innerHTML = '';
+  
+  const messages = chatStorage[activeContact] || [];
+  messages.forEach(msg => {
+    displayMessageOnScreen(msg);
+  });
+}
+
+// --- Rest der App bleibt unverändert ---
 
 // Navigation Logic
 function initNavigation() {
@@ -263,13 +189,11 @@ function initNavigation() {
 
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
-      // Button Styling Update (nur für normale Nav Items)
       if (item.classList.contains('nav-item')) {
         document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
         item.classList.add('active');
       }
 
-      // View Switching
       const targetId = item.getAttribute('data-target');
       views.forEach(view => {
         view.classList.remove('active');
@@ -284,9 +208,8 @@ function initNavigation() {
   });
 }
 
-// Data Handling (Offline First Approach)
+// Data Handling
 function loadUserData() {
-  // Simulierte Daten
   const userData = {
     name: "Hans",
     diagnosis: "Hüft-TEP rechts",
@@ -294,32 +217,25 @@ function loadUserData() {
     room: "Raum 104"
   };
 
-  // 1. Versuchen, Daten aus localStorage zu laden (Offline Fall)
   const storedData = localStorage.getItem('rehaUser');
   if (storedData) {
     renderData(JSON.parse(storedData));
     console.log('Daten aus Cache geladen');
   } else {
-    // Initial rendern
     renderData(userData);
     saveDataLocally(userData);
   }
-
-  // In einer echten App würde hier ein Fetch zum Server passieren
-  // und bei Erfolg der localStorage aktualisiert werden.
 }
 
 function renderData(data) {
-  // Hier würden wir normalerweise das DOM manipulieren, 
-  // um "Hans" oder die Uhrzeit dynamisch einzusetzen.
-  // Da es hardcoded im HTML ist, ist dies nur ein Platzhalter für die Logik.
+  // Platzhalter für DOM-Manipulation
 }
 
 function saveDataLocally(data) {
   localStorage.setItem('rehaUser', JSON.stringify(data));
 }
 
-// Appointment System
+// Appointment System (vollständig erhalten)
 function initAppointments() {
   const uploadInput = document.getElementById('pdf-upload');
   if (uploadInput) {
@@ -335,7 +251,6 @@ function loadAppointments() {
   }
 }
 
-// Progress Bar Functions
 function showProgressBar() {
   document.getElementById('progress-container').style.display = 'flex';
   updateProgressBar(0, 'Datei wird geladen...');
@@ -364,7 +279,6 @@ async function handlePDFUpload(event) {
     return;
   }
 
-  // PROGRESS BAR START
   showProgressBar();
   updateProgressBar(5, 'PDF wird initialisiert...');
 
@@ -378,17 +292,15 @@ async function handlePDFUpload(event) {
 
     updateProgressBar(10, `Verarbeite ${totalPages} Seiten...`);
 
-    // Seitenverarbeitung mit Fortschritt
     for (let i = 1; i <= totalPages; i++) {
       currentPage = i;
-      const pageProgress = (currentPage / totalPages) * 80 + 10; // 10% - 90%
+      const pageProgress = (currentPage / totalPages) * 80 + 10;
       
       updateProgressBar(pageProgress, `Seite ${i} von ${totalPages} wird analysiert...`);
 
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
 
-      // Prüfen, ob Seite Text oder Bild ist
       if (textContent.items.length < 5) {
         updateProgressBar(pageProgress, `Seite ${i}: OCR wird durchgeführt...`);
         
@@ -400,7 +312,6 @@ async function handlePDFUpload(event) {
 
         await page.render({ canvasContext: context, viewport: viewport }).promise;
 
-        // OCR mit Fortschritts-Callback
         const { data: { text } } = await Tesseract.recognize(canvas, 'deu', {
           logger: m => {
             if (m.status === 'recognizing text') {
@@ -426,7 +337,6 @@ async function handlePDFUpload(event) {
       renderAppointments(newAppointments);
       updateProgressBar(100, 'Fertig!');
       
-      // Kurz anzeigen, dann ausblenden
       setTimeout(() => {
         hideProgressBar();
         alert(`${newAppointments.length} Termine erfolgreich importiert!`);
@@ -441,7 +351,6 @@ async function handlePDFUpload(event) {
     hideProgressBar();
     alert('Fehler beim Lesen der PDF-Datei: ' + error.message);
   } finally {
-    // Input zurücksetzen, damit dieselbe Datei erneut ausgewählt werden kann
     event.target.value = '';
   }
 }
@@ -451,20 +360,13 @@ function parseSmartAppointments(text) {
   const lines = text.split('\n');
 
   let currentDate = null;
-
-  // Regex für Datums-Block (z.B. "Montag 30.06.2025" oder nur "30.06.2025")
-  // Wir suchen nach einem Datum am Anfang oder Ende einer Zeile, oft mit Wochentag davor
   const dateBlockRegex = /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)?.*(\d{2}\.\d{2}\.\d{4})/;
-
-  // Regex für Zeilenstart mit Zeit (HH:MM)
-  // Erwartet, dass die Zeile mit der Uhrzeit beginnt
   const timeRowRegex = /^\s*(\d{1,2}:\d{2})(?:\s*(?:-|bis)\s*(\d{1,2}:\d{2}))?/;
 
   for (let line of lines) {
     line = line.trim();
     if (!line) continue;
 
-    // 1. Prüfen auf Datums-Block
     const dateMatch = line.match(dateBlockRegex);
     if (dateMatch) {
       currentDate = dateMatch[1];
@@ -472,35 +374,28 @@ function parseSmartAppointments(text) {
       continue;
     }
 
-    // 2. Prüfen auf Termin-Zeile (nur wenn wir ein Datum haben)
     if (currentDate) {
       const timeMatch = line.match(timeRowRegex);
       if (timeMatch) {
         const startTime = timeMatch[1];
         const endTime = timeMatch[2] || "";
         const timeDisplay = endTime ? `${startTime} - ${endTime}` : startTime;
-
-        // Rest der Zeile analysieren
         let restText = line.replace(timeRowRegex, '').trim();
 
-        // Smart Extraction aus dem Rest-Text
         let location = "Raum unbekannt";
         let therapist = "Mitarbeiter unbekannt";
-        let title = "Termin"; // Fallback
+        let title = "Termin";
 
-        // A. Mitarbeiter (Hr. / Fr. / Dr.)
         const therapMatch = restText.match(/(?:Hr\.|Fr\.|Dr\.|Therapeut)\s+([A-ZÄÖÜ][a-zäöü]+(?:-[A-ZÄÖÜ][a-zäöü]+)?)/);
         if (therapMatch) {
           therapist = therapMatch[0];
         }
 
-        // B. Ort (Raum X)
         const locMatch = restText.match(/(?:Raum|Zimmer|Etage|Haus)\s*(\d+[a-zA-Z]*)/i);
         if (locMatch) {
           location = locMatch[0];
         }
 
-        // C. Leistung / Titel
         const therapies = ["Physio", "Ergo", "Massage", "Lymphdrainage", "KG", "MT", "Krankengymnastik", "Einzel", "Gruppe", "Fango", "Heißluft"];
         let foundTherapy = [];
         for (const t of therapies) {
@@ -519,13 +414,11 @@ function parseSmartAppointments(text) {
           title = words.slice(0, 3).join(' ');
         }
 
-        // Details (Mitbringen)
         let details = "";
         if (restText.toLowerCase().includes("handtuch")) details += "Handtuch ";
         if (restText.toLowerCase().includes("laken")) details += "Laken ";
         if (details === "") details = "Bitte pünktlich erscheinen.";
 
-        // Termin hinzufügen
         const isDuplicate = appointments.some(a => a.date === currentDate && a.startTime === startTime);
         if (!isDuplicate) {
           appointments.push({
@@ -591,7 +484,6 @@ function renderAppointments(appointments) {
 
     const card = document.createElement('div');
     card.className = `appointment-card ${appt.completed ? 'completed' : ''}`;
-
     const checkboxId = `check-${appt.id}`;
 
     card.innerHTML = `
