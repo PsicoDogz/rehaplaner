@@ -156,63 +156,43 @@ async function sendMessage(contactKey, text) {
 }
 
 function initChat() {
-    const chatButtons = document.querySelectorAll('.contact-btn');
-    const chatForm = document.getElementById('chat-form');
-    const chatInput = document.getElementById('chat-message-input');
-    const nameInput = document.getElementById('chat-name-input');
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button');
+    const chatMessages = document.getElementById('chat-messages');
 
-    // aktuellen Nutzer laden
-    loadCurrentUser();
+    // LocalStorage überprüfen und laden
+    let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
-    // Name-Feld initialisieren
-    if (nameInput) {
-        nameInput.value = currentUser.name;
-        nameInput.addEventListener('change', handleNameChange);
-        // optional auch bei Blur
-        nameInput.addEventListener('blur', (e) => {
-            if (e.target.value.trim() === '') {
-                e.target.value = currentUser.name;
-            }
+    function renderChat() {
+        chatMessages.innerHTML = '';
+        chatHistory.forEach(msg => {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'chat-message';
+            messageEl.classList.add(msg.role === currentUser.role ? 'own-message' : 'other-message');
+            messageEl.textContent = `${msg.name}: ${msg.text}`;
+            chatMessages.appendChild(messageEl);
         });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Aktuellen Chat aus aktivem Button bestimmen
-    const activeBtn = document.querySelector('.contact-btn.active');
-    if (activeBtn && activeBtn.dataset.contact) {
-        currentChatKey = activeBtn.dataset.contact;
-    }
-
-    // Erste Nachrichten laden
-    fetchMessages(currentChatKey);
-
-    // Polling für "Live"-Effekt (alle 2 Sekunden)
-    setInterval(() => {
-        fetchMessages(currentChatKey);
-    }, 2000);
-
-    // Kontaktwechsel: anderen Chat-Raum laden
-    chatButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            chatButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const contactKey = btn.dataset.contact;
-            currentChatKey = contactKey;
-            fetchMessages(currentChatKey);
-        });
+    sendButton.addEventListener('click', () => {
+        const messageText = chatInput.value.trim();
+        if (messageText) {
+            const newMessage = {
+                name: currentUser.name,
+                role: currentUser.role,
+                text: messageText,
+                timestamp: new Date().toISOString()
+            };
+            chatHistory.push(newMessage);
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+            chatInput.value = '';
+            renderChat();
+        }
     });
 
-    // Nachricht senden
-    if (chatForm) {
-        chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const text = chatInput.value.trim();
-            if (!text) return;
-
-            await sendMessage(currentChatKey, text);
-            chatInput.value = '';
-        });
-    }
+    // Chat laden
+    renderChat();
 }
 
 function renderChat(contactKey) {
