@@ -23,8 +23,6 @@ let currentUser = {
     role: 'patient'  // patient | verwaltung | therapeut | fahrer
 };
 
-const API_BASE = '/api'; // Backend-Endpunkte
-
 function saveCurrentUser() {
     localStorage.setItem('rehaChatUser', JSON.stringify(currentUser));
 }
@@ -69,13 +67,13 @@ function escapeHtml(str) {
 }
 
 function formatRole(role) {
-    switch (role) {
-        case 'verwaltung': return 'Verwaltung';
-        case 'therapeut':  return 'Therapeut';
-        case 'fahrer':     return 'Fahrer';
-        case 'patient':    return 'Patient';
-        default:           return role || '';
-    }
+    const roleMap = {
+        'verwaltung': 'Verwaltung',
+        'therapeut': 'Therapeut',
+        'fahrer': 'Fahrer',
+        'patient': 'Patient'
+    };
+    return roleMap[role] || role || '';
 }
 
 function askForRole() {
@@ -101,99 +99,116 @@ function askForRole() {
 function handleNameChange(e) {
     const newName = e.target.value.trim();
     if (!newName) {
-        // leere Eingabe -> alten Namen wiederherstellen
-        e.target.value = currentUser.name;
+        e.target.value = currentUser.name; // Alten Wert wiederherstellen
         return;
     }
     if (newName === currentUser.name) return;
 
     currentUser.name = newName;
-
-    // Wenn der Name geändert wird: nach Rolle fragen
-    const newRole = askForRole();
-    currentUser.role = newRole;
+    
+    // Nur nach Rolle fragen, wenn es "Hans" war (Standard)
+    if (currentUser.role === 'patient') {
+        const newRole = askForRole();
+        currentUser.role = newRole;
+    }
+    
     saveCurrentUser();
 }
 
-// Nachrichten aus Backend / JSON holen
-async function fetchMessages(contactKey) {
-    try {
-        const res = await fetch(`${API_BASE}/chat?room=${encodeURIComponent(contactKey)}`);
-        if (!res.ok) {
-            throw new Error('HTTP ' + res.status);
-        }
-        const data = await res.json();
-        chatData[contactKey] = Array.isArray(data) ? data : [];
-        if (contactKey === currentChatKey) {
-            renderChat(contactKey);
-        }
-    } catch (err) {
-        console.error('Fehler beim Laden der Nachrichten:', err);
-    }
+// Lädt Chats aus LocalStorage
+function loadChatFromLocalStorage() {
+    const storageKey = `rehaChat_${currentChatKey}`;
+    const stored = localStorage.getItem(storageKey);
+    chatData[currentChatKey] = stored ? JSON.parse(stored) : [];
 }
 
-// Nachricht an Backend senden
-async function sendMessage(contactKey, text) {
-    try {
-        await fetch(`${API_BASE}/chat`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                room: contactKey,
-                fromName: currentUser.name,
-                fromRole: currentUser.role,
-                text: text
-            })
-        });
+// Speichert Chats in LocalStorage
+function saveChatToLocalStorage(contactKey) {
+    const storageKey = `rehaChat_${contactKey}`;
+    localStorage.setItem(storageKey, JSON.stringify(chatData[contactKey]));
+}
 
-        // Direkt danach neu laden, damit es "live" wirkt
-        await fetchMessages(contactKey);
-    } catch (err) {
-        console.error('Fehler beim Senden der Nachricht:', err);
+// Lokales Senden ohne Backend
+function sendMessageLocal(contactKey, text) {
+    if (!text.trim()) return;
+    
+    const newMessage = {
+        id: Date.now() + Math.random(),
+        fromName: currentUser.name,
+        fromRole: currentUser.role,
+        text: text.trim(),
+        timestamp: new Date().toISOString()
+    };
+    
+    // In chatData speichern
+    if (!chatData[contactKey]) {
+        chatData[contactKey] = [];
     }
+    chatData[contactKey].push(newMessage);
+    
+    // In LocalStorage persistieren
+    saveChatToLocalStorage(contactKey);
+    
+    // Neu rendern
+    renderChat(contactKey);
 }
 
 function initChat() {
-    const chatInput = document.getElementById('chat-input');
-    const sendButton = document.getElementById('send-button');
-    const chatMessages = document.getElementById('chat-messages');
-
-    // LocalStorage überprüfen und laden
-    let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
-
-    function renderChat() {
-        chatMessages.innerHTML = '';
-        chatHistory.forEach(msg => {
-            const messageEl = document.createElement('div');
-            messageEl.className = 'chat-message';
-            messageEl.classList.add(msg.role === currentUser.role ? 'own-message' : 'other-message');
-            messageEl.textContent = `${msg.name}: ${msg.text}`;
-            chatMessages.appendChild(messageEl);
-        });
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+    // 1. User initial laden
+    loadCurrentUser();
+    
+    // 2. Name-Input mit Event Listener verbinden
+    const nameInput = document.getElementById('chat-name-input');
+    if (nameInput) {
+        nameInput.value = currentUser.name;
+        nameInput.addEventListener('change', handleNameChange);
+        nameInput.addEventListener('blur', handleNameChange);
     }
 
-    sendButton.addEventListener('click', () => {
-        const messageText = chatInput.value.trim();
-        if (messageText) {
-            const newMessage = {
-                name: currentUser.name,
-                role: currentUser.role,
-                text: messageText,
-                timestamp: new Date().toISOString()
-            };
-            chatHistory.push(newMessage);
-            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-            chatInput.value = '';
-            renderChat();
-        }
+    // 3. Kontakt-Buttons initialisieren
+    const contactButtons = document.querySelectorAll('.contact-btn');
+    contactButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Aktiven Button setzen
+            document.querySelectorAll('.contact-btn').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Aktuellen Chat wechseln
+            currentChatKey = button.dataset.contact;
+            
+            // Chats aus LocalStorage laden
+            loadChatFromLocalStorage();
+            
+            // Chat rendern
+            renderChat(currentChatKey);
+        });
     });
 
-    // Chat laden
-    renderChat();
-}
+    // 4. Form-Submit behandeln
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-message-input');
+    
+    if (chatForm && chatInput) {
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const messageText = chatInput.value.trim();
+            if (messageText) {
+                sendMessageLocal(currentChatKey, messageText);
+                chatInput.value = '';
+            }
+        });
+    } // <-- HIER WAR EINE KLAMMER ZU VIEL
+
+    // 5. Initiales Laden des aktiven Chats
+    loadChatFromLocalStorage();
+    renderChat(currentChatKey);
+    const activeButton = document.querySelector('.contact-btn.active');
+    if (activeButton) {
+        currentChatKey = activeButton.dataset.contact;
+        loadChatFromLocalStorage();
+        renderChat(currentChatKey);
+    }
+} // <-- UND HIER FEHLTE DIE SCHLIESSENDE KLAMMER FÜR initChat()
 
 function renderChat(contactKey) {
     const messagesContainer = document.getElementById('chat-messages');
@@ -346,7 +361,6 @@ function updateProgressBar(percent, statusText) {
     percentText.textContent = Math.round(percent) + '%';
     status.textContent = statusText;
 }
-
 
 async function handlePDFUpload(event) {
     const file = event.target.files[0];
