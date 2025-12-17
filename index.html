@@ -2,205 +2,209 @@
 <html lang="de">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Reha Planer+</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2563EB">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Reha Planer+</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563EB">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    // Dynamischer Worker-Pfad für Vite
+    const pdfWorkerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+    }
+  </script>
 </head>
 
 <body>
 
-    <header class="app-header">
-        <div class="logo-area">
-            <div class="logo-circle">LOGO</div>
-            <h1>REHA Planer</h1>
+  <header class="app-header">
+    <div class="logo-area">
+      <div class="logo-circle">LOGO</div>
+      <h1>REHA Planer</h1>
+    </div>
+    <div class="header-actions">
+      <button class="text-btn" aria-label="Schriftgröße anpassen">A+</button>
+      <button class="icon-btn" aria-label="Menü öffnen">
+        <span class="material-icons-round">menu</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="main-content">
+
+    <section id="view-home" class="view active">
+      <div class="card welcome-card">
+        <div class="welcome-text">
+          <p class="subtext">Willkommen zurück,</p>
+          <h2>Hans</h2>
+          <hr class="divider">
+          <p class="info-row">Diagnose: <strong>Hüft-TEP rechts</strong></p>
+          <p class="info-row">Therapeut: <strong>Fr. Schmidt</strong></p>
         </div>
-        <div class="header-actions">
-            <button class="text-btn" aria-label="Schriftgröße anpassen">A+</button>
-            <button class="icon-btn" aria-label="Menü öffnen">
-                <span class="material-icons-round">menu</span>
-            </button>
+        <div class="user-avatar">
+          <span class="material-icons-round">person</span>
         </div>
-    </header>
+      </div>
 
-    <main id="main-content">
-
-        <section id="view-home" class="view active">
-            <div class="card welcome-card">
-                <div class="welcome-text">
-                    <p class="subtext">Willkommen zurück,</p>
-                    <h2>Hans</h2>
-                    <hr class="divider">
-                    <p class="info-row">Diagnose: <strong>Hüft-TEP rechts</strong></p>
-                    <p class="info-row">Therapeut: <strong>Fr. Schmidt</strong></p>
-                </div>
-                <div class="user-avatar">
-                    <span class="material-icons-round">person</span>
-                </div>
-            </div>
-
-            <div class="card appointment-card">
-                <div class="card-header">
-                    <h3>Nächster Termin</h3>
-                    <span class="badge badge-orange">Heute</span>
-                </div>
-                <div class="appointment-details">
-                    <div class="detail-row">
-                        <span class="material-icons-round icon-blue">schedule</span>
-                        <span class="large-text">09:00 Uhr</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="material-icons-round icon-grey">place</span>
-                        <span>Raum 104</span>
-                    </div>
-                    <h4 class="therapy-type">Physiotherapie Einzel</h4>
-                    <div class="requirements">
-                        <p>Bitte mitbringen:</p>
-                        <div class="chips">
-                            <span class="chip">Handtuch</span>
-                            <span class="chip">Trinkflasche</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stats-row">
-                <div class="stat-card green-bg">
-                    <span class="stat-number green-text">85%</span>
-                    <span class="stat-label">Tagesziel</span>
-                </div>
-                <div class="stat-card purple-bg">
-                    <span class="stat-number purple-text">3</span>
-                    <span class="stat-label">Übungen offen</span>
-                </div>
-            </div>
-        </section>
-
-        <section id="view-chat" class="view hidden">
-            <h3 class="view-title">Ansprechpartner</h3>
-
-            <!-- Neuer Bereich: Name / Rolle des aktuellen Nutzers -->
-            <div class="chat-user-settings">
-                <label for="chat-name-input">Name</label>
-                <input
-                    type="text"
-                    id="chat-name-input"
-                    placeholder="Name"
-                    autocomplete="off"
-                />
-                <small class="chat-user-hint">
-                    Standardname ist der zum Patienten gehörige Name, kann aber geändert werden.
-                </small>
-            </div>
-
-            <div class="contact-selector">
-                <button class="contact-btn active" data-contact="verwaltung">
-                    <span class="material-icons-round">apartment</span>
-                    Verwaltung
-                </button>
-                <button class="contact-btn" data-contact="therapeut">
-                    <span class="material-icons-round">person</span>
-                    Therapeut
-                </button>
-                <button class="contact-btn" data-contact="fahrer">
-                    <span class="material-icons-round">local_shipping</span>
-                    Fahrer
-                </button>
-            </div>
-
-            <div class="chat-area" id="chat-messages"></div>
-
-            <form class="chat-input" id="chat-form">
-                <input type="text" id="chat-message-input" placeholder="Nachricht eingeben..."
-                 autocomplete="off" required>
-                <button type="submit" class="icon-btn" aria-label="Nachricht senden">
-                    <span class="material-icons-round">send</span>
-                </button>
-            </form>
-        </section>
-
-        <section id="view-termine" class="view hidden">
-            <div class="appointments-header">
-                <h3>Meine Termine</h3>
-                <label for="pdf-upload" class="icon-btn-large" aria-label="Termin-PDF importieren">
-                    <span class="material-icons-round">upload_file</span>
-                </label>
-                <input type="file" id="pdf-upload" accept="application/pdf" style="display: none;">
-            </div>
-
-            <div id="progress-container" class="progress-container" style="display: none;">
-                <div class="progress-card">
-                    <span class="material-icons-round progress-icon">upload_file</span>
-                    <h4>PDF wird verarbeitet...</h4>
-                    <p id="progress-status">Datei wird geladen</p>
-                    <div class="progress-bar-wrapper">
-                        <div id="progress-bar-fill" class="progress-bar-fill"></div>
-                    </div>
-                    <span id="progress-percent" class="progress-percent">0%</span>
-                </div>
-            </div>
-
-            <div id="appointments-container" class="appointments-list">
-                <div class="empty-state">
-                    <span class="material-icons-round large-icon">event_busy</span>
-                    <p>Keine Termine vorhanden.</p>
-                    <p class="small-text">Laden Sie Ihren Terminplan als PDF hoch.</p>
-                </div>
-            </div>
-        </section>
-
-        <section id="view-doku" class="view hidden">
-            <div class="placeholder-content">
-                <h3>Dokumente</h3>
-                <p>Ihre Befunde und Pläne (Offline verfügbar).</p>
-            </div>
-        </section>
-
-        <section id="view-training" class="view hidden">
-            <div class="placeholder-content">
-                <h3>Training</h3>
-                <p>Ihre Trainingsübungen erscheinen hier.</p>
-            </div>
-        </section>
-
-    </main>
-
-    <nav class="bottom-nav">
-        <button class="nav-item active" data-target="view-home">
-            <span class="material-icons-round">home</span>
-            <span>Home</span>
-        </button>
-        <button class="nav-item" data-target="view-termine">
-            <span class="material-icons-round">calendar_today</span>
-            <span>Termine</span>
-        </button>
-
-        <div class="fab-wrapper">
-            <button class="fab-btn" data-target="view-training">
-                <span class="material-icons-round">assignment_turned_in</span>
-            </button>
-            <span class="fab-label">Training</span>
+      <div class="card appointment-card">
+        <div class="card-header">
+          <h3>Nächster Termin</h3>
+          <span class="badge badge-orange">Heute</span>
         </div>
+        <div class="appointment-details">
+          <div class="detail-row">
+            <span class="material-icons-round icon-blue">schedule</span>
+            <span class="large-text">09:00 Uhr</span>
+          </div>
+          <div class="detail-row">
+            <span class="material-icons-round icon-grey">place</span>
+            <span>Raum 104</span>
+          </div>
+          <h4 class="therapy-type">Physiotherapie Einzel</h4>
+          <div class="requirements">
+            <p>Bitte mitbringen:</p>
+            <div class="chips">
+              <span class="chip">Handtuch</span>
+              <span class="chip">Trinkflasche</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <button class="nav-item" data-target="view-doku">
-            <span class="material-icons-round">folder_open</span>
-            <span>Dokumente</span>
-        </button>
-        <button class="nav-item" data-target="view-chat">
-            <span class="material-icons-round">chat_bubble_outline</span>
-            <span>Chat</span>
-        </button>
-    </nav>
+      <div class="stats-row">
+        <div class="stat-card green-bg">
+          <span class="stat-number green-text">85%</span>
+          <span class="stat-label">Tagesziel</span>
+        </div>
+        <div class="stat-card purple-bg">
+          <span class="stat-number purple-text">3</span>
+          <span class="stat-label">Übungen offen</span>
+        </div>
+      </div>
+    </section>
 
-    <script src="app.js"></script>
+    <section id="view-chat" class="view hidden">
+      <h3 class="view-title">Ansprechpartner</h3>
+
+      <!-- Neuer Bereich: Name / Rolle des aktuellen Nutzers -->
+      <div class="chat-user-settings">
+        <label for="chat-name-input">Name</label>
+        <input
+          type="text"
+          id="chat-name-input"
+          placeholder="Name"
+          autocomplete="off"
+        />
+        <small class="chat-user-hint">
+          Standardname ist der zum Patienten gehörige Name, kann aber geändert werden.
+        </small>
+      </div>
+
+      <div class="contact-selector">
+        <button class="contact-btn active" data-contact="verwaltung">
+          <span class="material-icons-round">apartment</span>
+          Verwaltung
+        </button>
+        <button class="contact-btn" data-contact="therapeut">
+          <span class="material-icons-round">person</span>
+          Therapeut
+        </button>
+        <button class="contact-btn" data-contact="fahrer">
+          <span class="material-icons-round">local_shipping</span>
+          Fahrer
+        </button>
+      </div>
+
+      <div class="chat-area" id="chat-messages"></div>
+
+      <form class="chat-input" id="chat-form">
+        <input type="text" id="chat-message-input" placeholder="Nachricht eingeben..."
+         autocomplete="off" required>
+        <button type="submit" class="icon-btn" aria-label="Nachricht senden">
+          <span class="material-icons-round">send</span>
+        </button>
+      </form>
+    </section>
+
+    <section id="view-termine" class="view hidden">
+      <div class="appointments-header">
+        <h3>Meine Termine</h3>
+        <label for="pdf-upload" class="icon-btn-large" aria-label="Termin-PDF importieren">
+          <span class="material-icons-round">upload_file</span>
+        </label>
+        <input type="file" id="pdf-upload" accept="application/pdf" style="display: none;">
+      </div>
+
+      <div id="progress-container" class="progress-container" style="display: none;">
+        <div class="progress-card">
+          <span class="material-icons-round progress-icon">upload_file</span>
+          <h4>PDF wird verarbeitet...</h4>
+          <p id="progress-status">Datei wird geladen</p>
+          <div class="progress-bar-wrapper">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+          <span id="progress-percent" class="progress-percent">0%</span>
+        </div>
+      </div>
+
+      <div id="appointments-container" class="appointments-list">
+        <div class="empty-state">
+          <span class="material-icons-round large-icon">event_busy</span>
+          <p>Keine Termine vorhanden.</p>
+          <p class="small-text">Laden Sie Ihren Terminplan als PDF hoch.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-doku" class="view hidden">
+      <div class="placeholder-content">
+        <h3>Dokumente</h3>
+        <p>Ihre Befunde und Pläne (Offline verfügbar).</p>
+      </div>
+    </section>
+
+    <section id="view-training" class="view hidden">
+      <div class="placeholder-content">
+        <h3>Training</h3>
+        <p>Ihre Trainingsübungen erscheinen hier.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-target="view-home">
+      <span class="material-icons-round">home</span>
+      <span>Home</span>
+    </button>
+    <button class="nav-item" data-target="view-termine">
+      <span class="material-icons-round">calendar_today</span>
+      <span>Termine</span>
+    </button>
+
+    <div class="fab-wrapper">
+      <button class="fab-btn" data-target="view-training">
+        <span class="material-icons-round">assignment_turned_in</span>
+      </button>
+      <span class="fab-label">Training</span>
+    </div>
+
+    <button class="nav-item" data-target="view-doku">
+      <span class="material-icons-round">folder_open</span>
+      <span>Dokumente</span>
+    </button>
+    <button class="nav-item" data-target="view-chat">
+      <span class="material-icons-round">chat_bubble_outline</span>
+      <span>Chat</span>
+    </button>
+  </nav>
+
+  <script type="module" src="/app.js"></script>
 </body>
 
 </html>
