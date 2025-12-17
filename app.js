@@ -377,7 +377,7 @@ async function handlePDFUpload(event) {
         return;
     }
 
-    // PROGRESS BAR START
+     // PROGRESS BAR START
     showProgressBar();
     updateProgressBar(5, 'PDF wird initialisiert...');
 
