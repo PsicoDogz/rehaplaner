@@ -2,10 +2,23 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: './', 
+  base: './',
+  build: {
+    rollupOptions: {
+      external: [
+        '/vendor/pdf.min.mjs',
+        '/vendor/pdf.worker.min.mjs'
+      ]
+    }
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: [
+        'vendor/pdf.min.mjs',
+        'vendor/pdf.worker.min.mjs',
+        'vendor/tesseract.min.js'
+      ],
       manifest: {
         name: 'RehaPlaner+',
         short_name: 'RehaPlaner',
@@ -14,18 +27,6 @@ export default defineConfig({
         background_color: '#F3F4F6',
         theme_color: '#2563EB',
         orientation: 'portrait',
-        icons: [
-          {
-            src: 'icon-192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'icon-512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
       },
       workbox: {
         globPatterns: ['**/*.{html,js,css,png,json}'],

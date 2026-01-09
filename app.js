@@ -1,16 +1,17 @@
 // app.js
-import './styles.css';
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded fired');
   initNavigation();
   loadUserData();
   initAppointments();
   initChat();
   
   // Service Worker Registration für Vite PWA
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      // relativer Pfad, Vite erzeugt sw im dist
+      navigator.serviceWorker.register('./sw.js')
         .then(reg => console.log('SW registered:', reg))
         .catch(err => console.log('SW registration failed:', err));
     });
@@ -540,3 +541,8 @@ function renderAppointments(appointments) {
     container.appendChild(card);
   });
 }
+
+// Debug-Hilfen: macht Funktionen aus dem Modul global zugänglich (temporär)
+window.initNavigation = initNavigation;
+window.initChat = initChat;
+window.initAppointments = initAppointments;
