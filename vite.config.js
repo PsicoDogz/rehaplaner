@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: './',
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -9,7 +10,7 @@ export default defineConfig({
       manifest: {
         name: 'RehaPlaner+',
         short_name: 'RehaPlaner',
-        start_url: '/',
+        start_url: './index.html',
         display: 'standalone',
         background_color: '#F3F4F6',
         theme_color: '#2563EB',
