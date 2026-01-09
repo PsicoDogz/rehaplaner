@@ -2,15 +2,15 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: './',
+  base: './', // Wichtig für lokales Öffnen ohne Server
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['**/*'],
+      // includeAssets entfernen oder anpassen
       manifest: {
         name: 'RehaPlaner+',
         short_name: 'RehaPlaner',
-        start_url: './index.html',
+        start_url: './',
         display: 'standalone',
         background_color: '#F3F4F6',
         theme_color: '#2563EB',
@@ -29,7 +29,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{html,js,css,png,jpg,svg,woff2}'],
+        globPatterns: ['**/*.{html,js,css,png,json}'], // PNG und JSON hinzugefügt
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/cdnjs\.cloudflare\.com/,
