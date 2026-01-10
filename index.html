@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="de">
 
@@ -10,11 +11,10 @@
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 
  <script src="vendor/tesseract.min.js"></script>
-
- <script src="vendor/pdf.min.js"></script>
+ <script src="vendor/pdf.js"></script>
  <script>
-    window.pdfjsLib = window.pdfjsLib || window.pdfjs;
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+    window.pdfjsLib = window.pdfjsLib || window.pdfjs || window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.js';
   </script>
 </head>
 

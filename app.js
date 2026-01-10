@@ -276,7 +276,8 @@ async function handlePDFUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  if (file.type !== 'application/pdf') {
+  // MIME-Fallback: manche Browser liefern keinen Type
+  if (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
     alert('Bitte wählen Sie eine PDF-Datei aus.');
     return;
   }
@@ -285,9 +286,25 @@ async function handlePDFUpload(event) {
   updateProgressBar(5, 'PDF wird initialisiert...');
 
   try {
+    // Sicherstellen, dass PDF.js geladen ist
+    if (!window.pdfjsLib) throw new Error('PDF.js ist nicht geladen (pdfjsLib undefined).');
+
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-    
+
+    // Robuster Aufruf: übergebe ein Objekt mit data
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    console.log('PDF loadingTask created:', loadingTask);
+
+    let pdf;
+    try {
+      pdf = await loadingTask.promise;
+    } catch (err) {
+      console.error('Fehler beim Laden der PDF (loadingTask.promise):', err);
+      throw new Error('PDF konnte nicht geladen werden: ' + (err.message || err));
+    }
+
+    console.log('PDF geladen, Seiten:', pdf.numPages);
+
     let fullText = '';
     const totalPages = pdf.numPages;
     let currentPage = 0;
@@ -297,48 +314,69 @@ async function handlePDFUpload(event) {
     for (let i = 1; i <= totalPages; i++) {
       currentPage = i;
       const pageProgress = (currentPage / totalPages) * 80 + 10;
-      
       updateProgressBar(pageProgress, `Seite ${i} von ${totalPages} wird analysiert...`);
 
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
 
-      if (textContent.items.length < 5) {
+      // Wenn kein oder sehr wenig Text vorhanden ist, OCR verwenden
+      if (!textContent || textContent.items.length < 5) {
         updateProgressBar(pageProgress, `Seite ${i}: OCR wird durchgeführt...`);
-        
-        const viewport = page.getViewport({ scale: 2.0 });
+
+        // Viewport und Canvas-Größen begrenzen, damit es nicht zu groß wird
+        const baseScale = Math.min(2.0, window.devicePixelRatio || 1);
+        const viewport = page.getViewport({ scale: baseScale });
+        const maxDim = 3000;
+        const scaleFactor = Math.min(1, maxDim / Math.max(viewport.width, viewport.height));
+        const finalViewport = page.getViewport({ scale: baseScale * scaleFactor });
+
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        canvas.width = Math.floor(finalViewport.width);
+        canvas.height = Math.floor(finalViewport.height);
 
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        try {
+          await page.render({ canvasContext: context, viewport: finalViewport }).promise;
+        } catch (renderErr) {
+          console.warn('Seite konnte nicht gerendert werden, überspringe OCR für diese Seite', renderErr);
+          // Optional: continue oder versuchen mit kleinerem Scale
+          continue;
+        }
 
-        const { data: { text } } = await Tesseract.recognize(canvas, 'deu', {
-          logger: m => {
-            if (m.status === 'recognizing text') {
-              const ocrProgress = (currentPage - 1 + m.progress) / totalPages * 80 + 10;
-              updateProgressBar(ocrProgress, `Seite ${i}: OCR ${Math.round(m.progress * 100)}%`);
+        // OCR mit Tesseract (nur wenn tesseract geladen ist)
+        if (window.Tesseract) {
+          const { data: { text } } = await Tesseract.recognize(canvas, 'deu', {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                const ocrProgress = (currentPage - 1 + m.progress) / totalPages * 80 + 10;
+                updateProgressBar(ocrProgress, `Seite ${i}: OCR ${Math.round(m.progress * 100)}%`);
+              }
             }
-          }
-        });
-        fullText += text + '\n';
+          });
+          fullText += (text || '') + '\n';
+        } else {
+          console.warn('Tesseract nicht geladen — OCR übersprungen.');
+        }
+
+        // Aufräumen
+        canvas.remove();
       } else {
+        // Text-Layer vorhanden: extrahieren
         const pageText = textContent.items.map(item => item.str).join(' ');
         fullText += pageText + '\n';
       }
     }
 
     updateProgressBar(95, 'Termine werden erstellt...');
-    
-    console.log("Extrahierter Text:", fullText);
+    console.log('Extrahierter Text:', fullText);
+
     const newAppointments = parseSmartAppointments(fullText);
 
     if (newAppointments.length > 0) {
       saveAppointments(newAppointments);
       renderAppointments(newAppointments);
       updateProgressBar(100, 'Fertig!');
-      
+
       setTimeout(() => {
         hideProgressBar();
         alert(`${newAppointments.length} Termine erfolgreich importiert!`);
@@ -351,9 +389,10 @@ async function handlePDFUpload(event) {
   } catch (error) {
     console.error('Fehler beim PDF-Import:', error);
     hideProgressBar();
-    alert('Fehler beim Lesen der PDF-Datei: ' + error.message);
+    alert('Fehler beim Lesen der PDF-Datei: ' + (error.message || error));
   } finally {
-    event.target.value = '';
+    // Reset input, damit dieselbe Datei erneut gewählt werden kann
+    if (event && event.target) event.target.value = '';
   }
 }
 
