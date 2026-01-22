@@ -12,7 +12,10 @@ const PRECACHE_URLS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './reha-logo.png' // bitte Logo in Repo-Root hinzufügen
+  './reha-logo.jpeg',      
+  './vendor/pdf.js',
+  './vendor/pdf.worker.js',
+  './vendor/tesseract.min.js'
 ];
 
 self.addEventListener('install', event => {
