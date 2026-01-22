@@ -1,18 +1,7 @@
 
-/*
-  Änderungen / Ziele:
-  - Wartet auf RehaDB (db.js) und seedet bei Bedarf Mockups
-  - Service Worker Registrierung
-  - UI initialisiert aus IndexedDB (patients, trainings, appointments)
-  - PDF-Upload nutzt pdf.js (+ optional Tesseract OCR) und speichert Termine in RehaDB
-  - A+ Button (3-State) persistiert in RehaDB/settings (Fallback localStorage)
-  - Hamburger-Button ist temporär ein Placeholder
-*/
-
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
 
-  // Wenn RehaDB verfügbar ist, initialisieren und ggf. Mockups seeden
   (async () => {
     try {
       if (window.RehaDB && RehaDB.initDB) {
@@ -31,11 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
       initAppointments();
       initChat();
 
-      // Neue initializations: UI from DB, A+ button, PDF upload handler, hamburger
+      // Neue initializations: UI from DB, A+ button, PDF upload handler
       if (typeof initUIFromDB === 'function') initUIFromDB();
       if (typeof initAPlusButton === 'function') initAPlusButton();
       if (typeof initPdfUpload === 'function') initPdfUpload();
-      if (typeof initHeaderHamburger === 'function') initHeaderHamburger();
     }
   })();
 
@@ -835,15 +823,6 @@ function initPdfUpload() {
   // handler already attached in initAppointments already, but keep guard
   input.removeEventListener('change', handlePDFUpload);
   input.addEventListener('change', handlePDFUpload);
-}
-
-// Temporärer Hamburger-Handler
-function initHeaderHamburger() {
-  const hb = document.getElementById('hamburger-btn');
-  if (!hb) return;
-  hb.addEventListener('click', () => {
-    alert('Menü-Funktionalität ist vorübergehend deaktiviert. (Placeholder)');
-  });
 }
 
 // Debug-Hilfen: macht Funktionen aus dem Modul global zugänglich (temporär)
