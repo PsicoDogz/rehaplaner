@@ -228,17 +228,34 @@ function initNavigation() {
 // --- Data Handling & Home UI ---
 
 async function loadUserData() {
-  // Versuche zuerst Daten aus RehaDB (patients) zu laden, fallback auf localStorage
   try {
     if (window.RehaDB && RehaDB.getAll) {
       const patients = await RehaDB.getAll('patients');
-      if (patients && patients.length > 0) {
-        // Zeige den ersten Patienten
+      
+      // === NEU: Finde den neuesten nicht-Mockup-Patienten ===
+      const realPatients = patients.filter(p => !p.mockup && p.source !== 'mockup');
+      if (realPatients.length > 0) {
+        // Sortiere nach createdAt, neuesten zuerst
+        realPatients.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const latestPatient = realPatients[0];
+        
         renderData({
-          name: patients[0].name || '���',
-          patientNr: patients[0].patientNr || '—',
-          diagnosis: patients[0].diagnosis || '',
-          nextAppt: patients[0].nextAppt || ''
+          name: latestPatient.name || 'Willkommen',
+          patientNr: latestPatient.patientNr || '—',
+          diagnosis: latestPatient.diagnosis || '',
+          nextAppt: latestPatient.nextAppt || ''
+        });
+        return;
+      }
+      
+      // Fallback: Wenn keine echten Patienten da sind, zeige Mockup
+      if (patients && patients.length > 0) {
+        const p = patients[0];
+        renderData({
+          name: p.name || '—',
+          patientNr: p.patientNr || '—',
+          diagnosis: p.diagnosis || '',
+          nextAppt: p.nextAppt || ''
         });
         return;
       }
@@ -336,7 +353,27 @@ function updateProgressBar(percent, statusText) {
   if (status) status.textContent = statusText;
 }
 
-// PDF Upload Handler (uses pdf.js and optional Tesseract)
+// --- Persistenz: saveAppointments (RehaDB fallback) ---
+async function saveAppointments(appointments) {
+  try {
+    if (window.RehaDB && RehaDB.clear && RehaDB.put) {
+      // clear & re-put for simplicity
+      await RehaDB.clear('appointments');
+      for (const appt of appointments) {
+        if (!appt.id) appt.id = 'appt-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+        await RehaDB.put('appointments', appt);
+      }
+      console.log('Appointments saved to RehaDB');
+      return;
+    }
+  } catch (e) {
+    console.warn('Fehler beim Speichern der Termine in RehaDB:', e);
+  }
+
+  // Fallback localStorage
+  localStorage.setItem('rehaAppts', JSON.stringify(appointments));
+}
+
 async function handlePDFUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -345,6 +382,16 @@ async function handlePDFUpload(event) {
   if (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
     alert('Bitte wählen Sie eine PDF-Datei aus.');
     return;
+  }
+
+  // === NEU: Mockup-Daten LÖSCHEN bevor wir importieren ===
+  try {
+    if (window.RehaDB && RehaDB.deleteMockupData) {
+      await RehaDB.deleteMockupData();
+      console.log('Mockup-Daten wurden gelöscht.');
+    }
+  } catch (e) {
+    console.warn('Fehler beim Löschen der Mockup-Daten:', e);
   }
 
   showProgressBar();
@@ -376,79 +423,74 @@ async function handlePDFUpload(event) {
 
     updateProgressBar(10, `Verarbeite ${totalPages} Seiten...`);
 
+    // === NEU: IMMER OCR, NIE textContent (Fix für gescannte PDFs) ===
     for (let i = 1; i <= totalPages; i++) {
       currentPage = i;
       const pageProgress = (currentPage / totalPages) * 80 + 10;
-      updateProgressBar(pageProgress, `Seite ${i} von ${totalPages} wird analysiert...`);
+      updateProgressBar(pageProgress, `Seite ${i} von ${totalPages}: OCR läuft...`);
 
       const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-
-      // Wenn kein oder sehr wenig Text vorhanden ist, OCR verwenden
-      if (!textContent || textContent.items.length < 5) {
-        updateProgressBar(pageProgress, `Seite ${i}: OCR wird durchgeführt...`);
-
-        // Viewport und Canvas-Größen begrenzen, damit es nicht zu groß wird
-        const baseScale = Math.min(2.0, window.devicePixelRatio || 1);
-        const viewport = page.getViewport({ scale: baseScale });
-        const maxDim = 3000;
-        const scaleFactor = Math.min(1, maxDim / Math.max(viewport.width, viewport.height));
-        const finalViewport = page.getViewport({ scale: baseScale * scaleFactor });
-
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = Math.floor(finalViewport.width);
-        canvas.height = Math.floor(finalViewport.height);
-
-        try {
-          await page.render({ canvasContext: context, viewport: finalViewport }).promise;
-        } catch (renderErr) {
-          console.warn('Seite konnte nicht gerendert werden, überspringe OCR für diese Seite', renderErr);
-          canvas.remove();
-          continue;
-        }
-
-        // OCR mit Tesseract (nur wenn tesseract geladen ist)
-        if (window.Tesseract) {
-          const { data: { text } } = await Tesseract.recognize(canvas, 'deu', {
-            logger: m => {
-              if (m.status === 'recognizing text') {
-                const ocrProgress = (currentPage - 1 + m.progress) / totalPages * 80 + 10;
-                updateProgressBar(ocrProgress, `Seite ${i}: OCR ${Math.round(m.progress * 100)}%`);
-              }
+      
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      await page.render({ canvasContext: context, viewport: viewport }).promise;
+      
+      if (window.Tesseract) {
+        const { data: { text } } = await Tesseract.recognize(canvas, 'deu', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              const ocrProgress = (currentPage - 1 + m.progress) / totalPages * 80 + 10;
+              updateProgressBar(ocrProgress, `Seite ${i}: OCR ${Math.round(m.progress * 100)}%`);
             }
-          });
-          fullText += (text || '') + '\n';
-        } else {
-          console.warn('Tesseract nicht geladen — OCR übersprungen.');
-        }
-
-        // Aufräumen
-        canvas.remove();
+          }
+        });
+        fullText += (text || '') + '\n';
+        console.log(`OCR Text Seite ${i}:`, text); // DEBUG-Ausgabe
       } else {
-        // Text-Layer vorhanden: extrahieren
-        const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += pageText + '\n';
+        console.warn('Tesseract nicht geladen - OCR übersprungen.');
       }
+      
+      // Aufräumen
+      canvas.remove();
     }
 
     updateProgressBar(95, 'Termine werden erstellt...');
-    console.log('Extrahierter Text:', fullText);
+    console.log('Extrahierter Gesamttext:', fullText);
+
+    // === NEU: Patienten-ID extrahieren ===
+    const patIdMatch = fullText.match(/Pat\s*\.\s*ID\s*[:\s]\s*(PT\d+)/i);
+    const extractedPatientId = patIdMatch ? patIdMatch[1] : '—';
+    console.log('Gefundene Patienten-ID:', extractedPatientId);
 
     const newAppointments = parseSmartAppointments(fullText);
 
     if (newAppointments.length > 0) {
-      // Speichere Document-Metadaten in RehaDB (falls vorhanden)
       try {
         if (window.RehaDB && RehaDB.put) {
           const docId = 'doc-' + Date.now();
+          
+          // === NEU: Patienten-Daten speichern ===
+          const patient = {
+            id: 'patient-' + docId,
+            patientNr: extractedPatientId,
+            name: 'Hans', // Standardname, kann später geändert werden
+            source: 'upload',
+            createdAt: new Date().toISOString()
+          };
+          await RehaDB.put('patients', patient);
+          console.log('Patient gespeichert:', patient);
+
           const doc = {
             id: docId,
             filename: file.name,
             mockup: false,
             source: 'upload',
             parsed: {
-              patientNr: '—', // optional: versuche später patientNr zu extrahieren
+              patientNr: extractedPatientId,
               trainings: [],
               appointments: newAppointments
             },
@@ -460,19 +502,16 @@ async function handlePDFUpload(event) {
           const apptsToStore = newAppointments.map(a => Object.assign({}, a, { documentId: docId }));
           await saveAppointments(apptsToStore);
 
-          // Refresh UI
+          // === NEU: Home-Screen neu laden mit echter Patienten-ID ===
+          await loadUserData();
           await loadAppointments();
-        } else {
-          // Fallback to localStorage + UI
-          saveAppointments(newAppointments);
-          renderAppointments(newAppointments);
         }
 
         updateProgressBar(100, 'Fertig!');
 
         setTimeout(() => {
           hideProgressBar();
-          alert(`${newAppointments.length} Termine erfolgreich importiert!`);
+          alert(`${newAppointments.length} Termine erfolgreich importiert!\nPatienten-ID: ${extractedPatientId}`);
         }, 800);
       } catch (e) {
         console.error('Fehler beim Speichern importierter Termine:', e);
@@ -489,121 +528,98 @@ async function handlePDFUpload(event) {
     hideProgressBar();
     alert('Fehler beim Lesen der PDF-Datei: ' + (error.message || error));
   } finally {
-    // Reset input, damit dieselbe Datei erneut gewählt werden kann
     if (event && event.target) event.target.value = '';
   }
 }
 
-// --- Smart Parser für Termine (heuristisch) ---
 function parseSmartAppointments(text) {
   const appointments = [];
-  const lines = text.split('\n');
-
+  const lines = text.split('\n').map(line => line.trim().replace(/\s+/g, ' ')).filter(line => line.length > 2);
+  
   let currentDate = null;
-  const dateBlockRegex = /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)?.*(\d{2}\.\d{2}\.\d{4})/;
-  const timeRowRegex = /^\s*(\d{1,2}:\d{2})(?:\s*(?:-|bis)\s*(\d{1,2}:\d{2}))?/;
-
-  for (let line of lines) {
-    line = line.trim();
-    if (!line) continue;
-
-    const dateMatch = line.match(dateBlockRegex);
+  
+  // Überspringe passive Leistungen
+  const skipKeywords = ['Passive-Leistung', 'Pausen für Essen', 'Essen EG', 'Ausgabe am', 'Fallnummer', 'Pat. ID', 'REHA-TRAINING'];
+  
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    
+    if (skipKeywords.some(keyword => line.includes(keyword))) continue;
+    
+    // Datum gefunden?
+    const dateMatch = line.match(/(\d{2}\s*\.\s*\d{2}\s*\.\s*\d{4})/);
     if (dateMatch) {
-      currentDate = dateMatch[1];
-      // console.log("Neuer Datums-Block gefunden:", currentDate);
+      currentDate = dateMatch[1].replace(/\s/g, '');
       continue;
     }
-
-    if (currentDate) {
-      const timeMatch = line.match(timeRowRegex);
-      if (timeMatch) {
-        const startTime = timeMatch[1];
-        const endTime = timeMatch[2] || "";
-        const timeDisplay = endTime ? `${startTime} - ${endTime}` : startTime;
-        let restText = line.replace(timeRowRegex, '').trim();
-
-        let location = "Raum unbekannt";
-        let therapist = "Mitarbeiter unbekannt";
-        let title = "Termin";
-
-        const therapMatch = restText.match(/(?:Hr\.|Fr\.|Dr\.|Therapeut)\s+([A-ZÄÖÜ][a-zäöü]+(?:-[A-ZÄÖÜ][a-zäöü]+)?)/);
-        if (therapMatch) {
-          therapist = therapMatch[0];
-        }
-
-        const locMatch = restText.match(/(?:Raum|Zimmer|Etage|Haus)\s*(\d+[a-zA-Z]*)/i);
-        if (locMatch) {
-          location = locMatch[0];
-        }
-
-        const therapies = ["Physio", "Ergo", "Massage", "Lymphdrainage", "KG", "MT", "Krankengymnastik", "Einzel", "Gruppe", "Fango", "Heißluft"];
-        let foundTherapy = [];
-        for (const t of therapies) {
-          if (restText.toLowerCase().includes(t.toLowerCase())) {
-            let fullTitle = t;
-            if (t === "KG") fullTitle = "Krankengymnastik";
-            if (t === "MT") fullTitle = "Manuelle Therapie";
-            foundTherapy.push(fullTitle);
-          }
-        }
-
-        if (foundTherapy.length > 0) {
-          title = [...new Set(foundTherapy)].join(' ');
-        } else {
-          const words = restText.split(/\s+/);
-          title = words.slice(0, 3).join(' ') || 'Termin';
-        }
-
-        let details = "";
-        if (restText.toLowerCase().includes("handtuch")) details += "Handtuch ";
-        if (restText.toLowerCase().includes("laken")) details += "Laken ";
-        if (details === "") details = "Bitte pünktlich erscheinen.";
-
-        const isDuplicate = appointments.some(a => a.date === currentDate && a.startTime === startTime);
-        if (!isDuplicate) {
-          appointments.push({
-            id: Date.now() + Math.random(),
-            date: currentDate,
-            time: timeDisplay,
-            startTime: startTime,
-            title: title,
-            location: location,
-            therapist: therapist,
-            details: details.trim(),
-            completed: false
-          });
-        }
+    
+    // Zeit gefunden?
+    const timeMatch = line.match(/(\d{1,2}\s*:\s*\d{2})\s*-\s*(\d{1,2}\s*:\s*\d{2})/);
+    if (timeMatch && currentDate) {
+      const startTime = timeMatch[1].replace(/\s/g, '');
+      const endTime = timeMatch[2].replace(/\s/g, '');
+      const timeDisplay = `${startTime} - ${endTime}`;
+      
+      let serviceLine = line.replace(timeMatch[0], '').trim();
+      
+      // Ort zuerst extrahieren
+      const locMatch = serviceLine.match(/(?:\d+\s*\.\s*)?Etage|EG|Gruppenraum\s*\d+|Turnraum|Seminarraum/);
+      let location = 'Raum unbekannt';
+      if (locMatch) {
+        location = locMatch[0].trim();
+        serviceLine = serviceLine.replace(locMatch[0], '').trim();
       }
+      
+      // Dann Mitarbeiter
+      const empMatch = serviceLine.match(/(Frau|Hr\.|Herr|Dr\.)\s+[A-ZÄÖÜ][a-zäöüß]+/);
+      let therapist = 'Mitarbeiter unbekannt';
+      if (empMatch) {
+        therapist = empMatch[0].trim();
+        serviceLine = serviceLine.replace(empMatch[0], '').trim();
+      }
+      
+      // Titel = Rest
+      let title = serviceLine || 'Termin';
+      if (title.length > 60) title = title.substring(0, 57) + '...';
+      
+      const details = serviceLine.includes('Handtuch') || serviceLine.includes('Laken') 
+        ? 'Handtuch, Laken' 
+        : 'Bitte pünktlich erscheinen.';
+      
+      appointments.push({
+        id: Date.now() + Math.random(),
+        date: currentDate,
+        time: timeDisplay,
+        startTime: startTime,
+        title: title,
+        location: location,
+        therapist: therapist,
+        details: details,
+        completed: false
+      });
     }
   }
-
-  return appointments.sort((a, b) => {
-    const parseDate = (d) => d.split('.').reverse().join('-');
-    const dateA = new Date(`${parseDate(a.date)}T${a.startTime}`);
-    const dateB = new Date(`${parseDate(b.date)}T${b.startTime}`);
-    return dateA - dateB;
+  
+  // === ULTIMATIVE CHRONOLOGISCHE SORTIERUNG ===
+  appointments.sort((a, b) => {
+    // 1. Datum vergleichen
+    const [dA, mA, yA] = a.date.split('.').map(Number);
+    const [dB, mB, yB] = b.date.split('.').map(Number);
+    
+    if (yA !== yB) return yA - yB;
+    if (mA !== mB) return mA - mB;
+    if (dA !== dB) return dA - dB;
+    
+    // 2. Bei gleichem Datum: Uhrzeit vergleichen
+    const [hA, minA] = (a.startTime || '00:00').split(':').map(Number);
+    const [hB, minB] = (b.startTime || '00:00').split(':').map(Number);
+    
+    if (hA !== hB) return hA - hB;
+    return minA - minB;
   });
-}
-
-// --- Persistenz: saveAppointments (RehaDB fallback) ---
-async function saveAppointments(appointments) {
-  try {
-    if (window.RehaDB && RehaDB.clear && RehaDB.put) {
-      // clear & re-put for simplicity
-      await RehaDB.clear('appointments');
-      for (const appt of appointments) {
-        if (!appt.id) appt.id = 'appt-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
-        await RehaDB.put('appointments', appt);
-      }
-      console.log('Appointments saved to RehaDB');
-      return;
-    }
-  } catch (e) {
-    console.warn('Fehler beim Speichern der Termine in RehaDB:', e);
-  }
-
-  // Fallback localStorage
-  localStorage.setItem('rehaAppts', JSON.stringify(appointments));
+  
+  console.log('CHRONOLOGISCH SORTIERT:', appointments.map(a => `${a.date} ${a.startTime} - ${a.title}`));
+  return appointments;
 }
 
 // --- Toggle Status ---
@@ -644,7 +660,25 @@ function renderAppointments(appointments) {
   const container = document.getElementById('appointments-container');
   if (!container) return;
 
-  if (!appointments || appointments.length === 0) {
+  // === ULTIMATIVE CHRONOLOGISCHE SORTIERUNG VOR DEM RENDERN ===
+  const sorted = [...appointments].sort((a, b) => {
+    // 1. Datum vergleichen
+    const [dA, mA, yA] = a.date.split('.').map(Number);
+    const [dB, mB, yB] = b.date.split('.').map(Number);
+    
+    if (yA !== yB) return yA - yB;
+    if (mA !== mB) return mA - mB;
+    if (dA !== dB) return dA - dB;
+    
+    // 2. Bei gleichem Datum: Uhrzeit vergleichen
+    const [hA, minA] = (a.startTime || '00:00').split(':').map(Number);
+    const [hB, minB] = (b.startTime || '00:00').split(':').map(Number);
+    
+    if (hA !== hB) return hA - hB;
+    return minA - minB;
+  });
+
+  if (!sorted || sorted.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <span class="material-icons-round large-icon">event_busy</span>
@@ -655,7 +689,7 @@ function renderAppointments(appointments) {
   }
 
   container.innerHTML = '';
-  appointments.forEach(appt => {
+  sorted.forEach(appt => {
     // Parse date for display
     let day = '??', monthName = '', time = appt.time || '';
     if (appt.date) {

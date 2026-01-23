@@ -76,6 +76,42 @@
     }));
   }
 
+  // NEU: Alle Stores leeren oder nur Mockups entfernen
+  async function clearAllStores() {
+    return openDb().then(async (db) => {
+      const promises = STORES.map(storeName => {
+        return new Promise((res, rej) => {
+          const t = db.transaction(storeName, 'readwrite');
+          const s = t.objectStore(storeName);
+          const r = s.clear();
+          r.onsuccess = () => res();
+          r.onerror = () => rej(r.error);
+        });
+      });
+      await Promise.all(promises);
+    });
+  }
+
+  async function deleteMockupData() {
+    const mockupStores = ['patients', 'documents', 'appointments', 'trainings'];
+    const deletePromises = mockupStores.map(async (storeName) => {
+      const items = await getAll(storeName);
+      const mockupItems = items.filter(item => item.mockup === true || item.source === 'mockup');
+      return openDb().then(db => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        return Promise.all(
+          mockupItems.map(item => new Promise((res, rej) => {
+            const req = store.delete(item.id);
+            req.onsuccess = () => res();
+            req.onerror = () => rej(req.error);
+          }))
+        );
+      });
+    });
+    await Promise.all(deletePromises);
+  }
+
   async function isStoreEmpty(storeName) {
     const arr = await getAll(storeName);
     return !arr || arr.length === 0;
@@ -137,6 +173,8 @@
     put,
     add,
     clear,
+    clearAllStores,
+    deleteMockupData,
     seedMockups,
     isStoreEmpty
   };
