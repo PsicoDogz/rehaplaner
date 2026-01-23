@@ -1,0 +1,112 @@
+README – RehaPlaner+ (Offline‑fähige Reha‑PWA)
+
+**1. Was ist das Projekt?**
+RehaPlaner+ ist eine offline‑fähige Progressive Web App (PWA), die Reha‑Patient:innen dabei unterstützt, ihren Behandlungsplan digital zu verwalten.
+Die App kann:
+
+- PDF‑Behandlungspläne per OCR einlesen
+
+- Termine automatisch extrahieren und sortiert anzeigen
+
+- Patientendaten lokal speichern
+
+- Einen einfachen Chat simulieren
+
+- Vollständig offline funktionieren (IndexedDB + Service Worker)
+
+- Als PWA installiert werden
+
+Das Projekt wurde als Prototyp entwickelt und enthält bewusst vereinfachte oder mockup‑basierte Bereiche (z. B. Chat, Dokumente, Login).
+
+**2. Kurzer Aufbau des Projekts**
+ rehaplaner/
+├── Dev-Doku/
+│   ├── 01_Einführung_Ziele.md
+│   ├── 02_Technische_Umsetzung.md
+│   ├── 03_Probleme_Reflexion.md
+│   ├── 04_Loesungswege.md
+│   └── 05_Fazit_Reflexion.md
+├── vendor/
+│   ├── pdf.js
+│   ├── pdf.worker.js
+│   └── tesseract.min.js
+├── app.js
+├── db.js
+├── index.html
+├── styles.css
+├── sw.js
+├── manifest.json
+├── package-lock.json
+├── package.json
+├── vite.config.js
+└── reha-logo.jpeg               
+
+**3. Einleitung**
+RehaPlaner+ wurde entwickelt, um Reha‑Patient:innen eine moderne, mobile und offline‑fähige Lösung zur Verfügung zu stellen.
+Der Fokus liegt auf:
+
+- Automatischer Terminextraktion aus PDF‑Behandlungsplänen
+
+- Offline‑First Architektur
+
+- Einfacher Bedienbarkeit
+
+- Mockup‑Daten für Demo‑Zwecke
+
+Der Prototyp zeigt, wie ein digitales Reha‑Informationssystem aussehen kann, ohne dass ein Server benötigt wird.
+
+**4. Funktionen**
+**PDF‑Upload & OCR**
+PDF wird im Browser gerendert
+Jede Seite wird per Tesseract.js  analysiert
+Termine werden automatisch erkannt (ca. 74 pro Plan, abhängig vom Layout)
+
+**Terminübersicht**
+Chronologisch sortiert
+Aufklappbare Karten
+Abhak‑Funktion
+Speicherung in IndexedDB
+
+**Chat (Mockup)**
+Drei Demo‑Kontakte
+Nachrichten werden lokal gespeichert
+Automatische Antwort (Demo)
+
+**Dokumentenübersicht (Mockup)**
+Anzeige von Beispiel‑Dokumenten
+Später erweiterbar für echte Reha‑Dokumente
+
+**Offline‑Funktionalität**
+Service Worker cached App‑Shell
+IndexedDB speichert Daten
+App funktioniert ohne Internet
+
+**PWA‑Installation**
+App kann auf Smartphone oder Desktop installiert werden
+
+**5. Voraussetzungen**
+Für volle Funktionalität (inkl. PDF‑Parsing & OCR):
+
+- Node.js  (LTS)
+- npm
+- Moderner Browser (Chrome, Edge, Firefox)
+- Lokaler Dev‑Server (über npm run dev)
+
+Für eingeschränkte Nutzung (ohne OCR):
+
+- Browser
+- Start per Doppelklick auf index.html  
+- → PDF‑Upload funktioniert hier nicht, da Worker nicht über file:// laufen
+
+**6. Start des Projekts**
+
+1. Abhängigkeiten installieren
+- npm install
+
+2. Dev‑Server starten
+- npm run dev
+
+3. Browser öffnet sich automatisch
+Die App läuft unter einer lokalen URL wie:
+- http://localhost:5173/
+

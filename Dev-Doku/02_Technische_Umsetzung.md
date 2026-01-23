@@ -2,19 +2,27 @@
 
 Projektstruktur:
 rehaplaner/
-├── vendor/                    # Manuelle Libraries (pdf.js, tesseract.min.js)
-│   ├── pdf.js
+├── Dev-Doku/
+│   ├── 01_Einführung_Ziele.md
+│   ├── 02_Technische_Umsetzung.md
+│   ├── 03_Probleme_Reflexion.md
+│   ├── 04_Loesungswege.md
+│   └── 05_Fazit_Reflexion.md
+├── vendor/                     # Manuelle Libraries (pdf.js, tesseract.min.js)
+│   ├── pdf.js                  
 │   ├── pdf.worker.js
 │   └── tesseract.min.js
-├── app.js                     # Hauptanwendungslogik
-├── db.js                      # IndexedDB-Wrapper und Mockup-Seeder
-├── index.html                 # App-Shell mit allen Views
-├── styles.css                 # Komplettes Styling + Mockup-Banner
-├── sw.js                      # Service Worker (Cache-First Strategie)
-├── manifest.json              # PWA-Manifest
-├── vite.config.js            # Vite + VitePWA-Konfiguration
-├── package.json              # Abhängigkeiten (pdfjs-dist, tesseract.js)
-└── reha-logo.jpeg                  
+├── app.js                      # Hauptanwendungslogik
+├── db.js                       # IndexedDB-Wrapper und Mockup-Seeder
+├── index.html                  # App-Shell mit allen Views
+├── styles.css                  # Komplettes Styling + Mockup-Banner
+├── sw.js                       # Service Worker (Cache-First Strategie)
+├── manifest.json               # PWA-Manifest
+├── package-lock.json 
+├── package.json                # Abhängigkeiten (pdfjs-dist, tesseract.js)
+├── vite.config.js              # Vite + VitePWA-Konfiguration
+└── reha-logo.jpeg
+
 
 Wichtigste 3 Dateien im Detail:
 
