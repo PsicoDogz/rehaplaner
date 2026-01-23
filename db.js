@@ -1,5 +1,27 @@
-// Simple IndexedDB wrapper and mockup seeder
-// Exposes window.RehaDB with methods: initDB(), getAll(store), put(store, obj), add(store, obj), get(store, key), seedMockups()
+/**
+ * db.js – IndexedDB Wrapper für RehaPlaner+
+ *
+ * Diese Datei kapselt alle Datenbankoperationen der PWA und stellt eine
+ * einheitliche API für CRUD‑Zugriffe bereit. Sie wird für die komplette
+ * Offline‑Funktionalität benötigt.
+ *
+ * Enthaltene Funktionen:
+ * - openDb(): Öffnet/initialisiert die IndexedDB und legt Object Stores an
+ * - getAll(), get(): Lesen von Datensätzen
+ * - put(), add(): Schreiben/Erstellen von Datensätzen
+ * - clear(), clearAllStores(): Löschen einzelner oder aller Stores
+ * - deleteMockupData(): Entfernt Demo‑Daten aus allen Stores
+ * - seedMockups(): Erstellt initiale Mockup‑Daten für Demo‑Modus
+ * - isStoreEmpty(): Prüft, ob ein Store leer ist
+ *
+ * Besonderheiten:
+ * - Alle Operationen sind Promise‑basiert, um asynchrone IndexedDB‑Transaktionen
+ *   sauber handhabbar zu machen.
+ * - Die Datei dient als zentrale Datenquelle für Patienten, Dokumente,
+ *   Trainings, Termine und UI‑Einstellungen.
+ * - Fallback‑Mechanismen (z. B. localStorage) werden in app.js umgesetzt,
+ *   nicht hier – db.js bleibt reiner IndexedDB‑Wrapper.
+ */
 
 (function () {
   const DB_NAME = 'reha-db';
@@ -76,7 +98,6 @@
     }));
   }
 
-  // NEU: Alle Stores leeren oder nur Mockups entfernen
   async function clearAllStores() {
     return openDb().then(async (db) => {
       const promises = STORES.map(storeName => {
@@ -118,11 +139,9 @@
   }
 
   async function seedMockups() {
-    // Only seed if patients store empty
     const empty = await isStoreEmpty('patients');
     if (!empty) return { seeded: false };
 
-    // === BASIS PATIENT & DOC (bestehend) ===
     const mockPatient = {
       id: 'mock-patient-1',
       patientNr: '####',
@@ -145,7 +164,6 @@
       createdAt: new Date().toISOString()
     };
 
-    // === TRAINING MOCKUPS (3 Demo-Übungen) ===
     const mockTrainings = [
       {
         id: 'mock-training-1',
@@ -188,7 +206,6 @@
       }
     ];
 
-    // === DOKUMENTE MOCKUPS (3 Demo-Dokumente) ===
     const mockDocuments = [
       {
         id: 'mock-doc-arztbrief',
@@ -231,7 +248,6 @@
       }
     ];
 
-    // === APPOINTMENT MOCKUP (1 Demo-Termin) ===
     const mockAppointment = {
       id: 'mock-app-1',
       date: new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString(),
@@ -248,23 +264,19 @@
       completed: false
     };
 
-    // Alles speichern
     await put('patients', mockPatient);
     await put('documents', mockDoc);
     
-    // Trainings speichern
     for (const training of mockTrainings) {
       await put('trainings', training);
     }
     
-    // Dokumente speichern (zusätzlich zum Basis-Doc)
     for (const doc of mockDocuments) {
       await put('documents', doc);
     }
     
     await put('appointments', mockAppointment);
 
-    // Default settings: A+ state
     await put('settings', { id: 'ui', aPlusState: 'normal' });
 
     console.log('Mockups seeded:', {
@@ -277,7 +289,6 @@
     return { seeded: true };
   }
 
-  // Expose API
   window.RehaDB = {
     initDB: openDb,
     getAll,

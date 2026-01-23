@@ -1,3 +1,27 @@
+<!--
+  index.html – App-Shell der RehaPlaner+ PWA
+
+  Diese Datei bildet die gesamte UI-Struktur der Anwendung ab und dient als Einstiegspunkt
+  für alle Views. Sie enthält:
+
+  • Grundlayout der PWA (Header, Navigation, Main-Content)
+  • Alle App-Views: Home, Termine, Chat, Dokumente, Training
+  • Datei-Upload für PDF-Behandlungspläne
+  • Platzhalter für dynamische Inhalte (z. B. Terminliste, Chatverlauf)
+  • Einbindung der Kernskripte (db.js, app.js)
+  • Einbindung der externen Libraries (PDF.js, Tesseract.js)
+  • Initialisierung des PDF.js Workers für OCR
+
+  Besonderheiten:
+  • Die Navigation funktioniert rein clientseitig über data-target-Attribute.
+  • Die App ist vollständig offline-fähig (Service Worker + IndexedDB).
+  • Viele Inhalte werden dynamisch durch app.js ersetzt (z. B. Patientendaten, Termine).
+  • Die Datei enthält bewusst Mockup-Elemente für den Demo-Modus.
+
+  Diese Datei enthält keine Logik; sie stellt nur die UI-Struktur bereit.
+-->
+
+
 <!DOCTYPE html>
 <html lang="de">
 
@@ -36,10 +60,8 @@
       <div class="card welcome-card">
         <div class="welcome-text">
           <p class="subtext">Willkommen zurück,</p>
-          <!-- Name wird vom JS (#home-patient-name) befüllt -->
           <h2 id="home-patient-name">Hans</h2>
           <hr class="divider">
-          <!-- Patient-Nr. sichtbar auf der Startseite -->
           <div class="home-patient-meta">
             <span class="label">Patient-Nr.</span>
             <strong id="home-patient-number">—</strong>
@@ -93,7 +115,6 @@
     <section id="view-chat" class="view hidden">
       <h3 class="view-title">Ansprechpartner</h3>
 
-      <!-- Neuer Bereich: Name / Rolle des aktuellen Nutzers -->
       <div class="chat-user-settings">
         <label for="chat-name-input">Name</label>
         <input
@@ -217,7 +238,6 @@
     </button>
   </nav>
 
-  <!-- ensure DB is loaded before app.js -->
   <script src="db.js"></script>
   <script src="app.js"></script>
 </body>

@@ -1,14 +1,16 @@
+// Initialisiert die App, lädt Daten aus IndexedDB und setzt UI-Funktionen auf
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
 
   (async () => {
     try {
+      // Initialisiert lokale Datenbank und lädt Demo-Daten (für Prototyp)
       if (window.RehaDB && RehaDB.initDB) {
         await RehaDB.initDB();
         await RehaDB.seedMockups();
         console.log('RehaDB initialized and mockups seeded (if needed).');
         
-        // 🔥 WICHTIG: Mockups für Demo forcieren (nach Präsentation entfernen!)
+        // Für Demo: Mockup-Daten neu laden
         try {
           await RehaDB.deleteMockupData();
           await RehaDB.seedMockups();
@@ -22,20 +24,20 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.warn('Fehler beim Initialisieren von RehaDB:', err);
     } finally {
-      // Core-Initialisierung
+      // Startet Kernfunktionen der App
       initNavigation();
       loadUserData();
       initAppointments();
       initChat();
 
-      // UI initialisieren
+      // Initialisiert UI-bezogene Module
       if (typeof initUIFromDB === 'function') initUIFromDB();
       if (typeof initAPlusButton === 'function') initAPlusButton();
       if (typeof initPdfUpload === 'function') initPdfUpload();
     }
   })();
 
-  // Service Worker Registration
+  // Registriert den Service Worker (nur über http/https)
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
@@ -45,18 +47,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// --- Chat-State & Globale Variablen ---
+// Standardwerte für Chat-Nutzer und aktive Kontaktgruppe
 let currentUserName = 'Hans';
 const currentUserRole = 'Patient';
 let activeContact = 'verwaltung';
 
+// Lokaler Chat-Speicher für jede Kontaktgruppe
 const chatStorage = {
   verwaltung: [],
   therapeut: [],
   fahrer: []
 };
 
-// --- XSS-Schutz ---
+// Wandelt potenziell gefährlichen Text in sichere HTML-Ausgabe um
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/[&<>"']/g, c => ({
@@ -68,7 +71,7 @@ function escapeHtml(str) {
   }[c]));
 }
 
-// --- localStorage Funktionen ---
+// Lädt Chatverläufe aus localStorage
 function loadChatFromLocalStorage() {
   Object.keys(chatStorage).forEach(key => {
     const stored = localStorage.getItem(`rehaChat_${key}`);
@@ -83,11 +86,12 @@ function loadChatFromLocalStorage() {
   });
 }
 
+// Speichert Chatverlauf einer Kontaktgruppe
 function saveChatToLocalStorage(contactKey) {
   localStorage.setItem(`rehaChat_${contactKey}`, JSON.stringify(chatStorage[contactKey]));
 }
 
-// --- Chat Funktionen ---
+// Initialisiert Chat-Eingabe, Kontaktwechsel und automatische Antworten
 function initChat() {
   const nameInput = document.getElementById('chat-name-input');
   if (nameInput) {
@@ -98,7 +102,8 @@ function initChat() {
   }
 
   loadChatFromLocalStorage();
-
+  
+  // Kontaktbuttons aktivieren
   const contactButtons = document.querySelectorAll('.contact-btn');
   contactButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -110,6 +115,7 @@ function initChat() {
     });
   });
 
+  // Nachrichten senden + Demo-Antwort
   const chatForm = document.getElementById('chat-form');
   const chatMessageInput = document.getElementById('chat-message-input');
 
@@ -119,6 +125,7 @@ function initChat() {
       const text = chatMessageInput.value.trim();
 
       if (text !== '') {
+        // Eigene Nachricht speichern
         const myMsg = {
           name: currentUserName,
           role: currentUserRole,
@@ -131,7 +138,8 @@ function initChat() {
         saveChatToLocalStorage(activeContact);
         displayMessageOnScreen(myMsg);
         chatMessageInput.value = '';
-
+        
+        // Demo-Antwort simulieren
         setTimeout(() => {
           const senderName = activeContact.charAt(0).toUpperCase() + activeContact.slice(1);
           const reply = {
@@ -150,6 +158,7 @@ function initChat() {
     });
   }
 
+  // Standardkontakt aktivieren
   const activeButton = document.querySelector('.contact-btn.active');
   if (activeButton) {
     activeContact = activeButton.dataset.contact;
@@ -157,6 +166,7 @@ function initChat() {
   renderChatHistory();
 }
 
+// Zeigt eine einzelne Nachricht im Chatfenster an
 function displayMessageOnScreen(msg) {
   const chatMessages = document.getElementById('chat-messages');
   if (!chatMessages) return;
@@ -181,6 +191,7 @@ function displayMessageOnScreen(msg) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+// Rendert gesamten Chatverlauf der aktiven Kontaktgruppe
 function renderChatHistory() {
   const chatMessages = document.getElementById('chat-messages');
   if (!chatMessages) return;
@@ -193,7 +204,7 @@ function renderChatHistory() {
   });
 }
 
-// --- Navigation ---
+// Steuert die Navigation zwischen den App-Views
 function initNavigation() {
   const navItems = document.querySelectorAll('.nav-item, .fab-btn');
   const views = document.querySelectorAll('.view');
@@ -219,12 +230,13 @@ function initNavigation() {
   });
 }
 
-// --- Data Handling & Home UI ---
+// Lädt Patientendaten aus IndexedDB oder localStorage und zeigt sie im Home-Screen an
 async function loadUserData() {
   try {
     if (window.RehaDB && RehaDB.getAll) {
       const patients = await RehaDB.getAll('patients');
       
+      // Echte Patienten (keine Mockups) bevorzugen
       const realPatients = patients.filter(p => !p.mockup && p.source !== 'mockup');
       if (realPatients.length > 0) {
         realPatients.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -239,6 +251,7 @@ async function loadUserData() {
         return;
       }
       
+      // Falls nur Mockup-Daten vorhanden sind
       if (patients && patients.length > 0) {
         const p = patients[0];
         renderData({
@@ -254,6 +267,7 @@ async function loadUserData() {
     console.warn('Fehler beim Lesen aus RehaDB in loadUserData:', e);
   }
 
+  // Fallback: Daten aus localStorage oder Default-Werte
   const storedData = localStorage.getItem('rehaUser');
   if (storedData) {
     renderData(JSON.parse(storedData));
@@ -271,6 +285,7 @@ async function loadUserData() {
   }
 }
 
+// Aktualisiert die UI-Felder im Home-Screen
 function renderData(data) {
   const nameEl = document.getElementById('home-patient-name');
   const nrEl = document.getElementById('home-patient-number');
@@ -279,11 +294,12 @@ function renderData(data) {
   if (nrEl) nrEl.textContent = data.patientNr || (data.patientNr === 0 ? '0' : '—');
 }
 
+// Speichert Patientendaten lokal (Fallback)
 function saveDataLocally(data) {
   localStorage.setItem('rehaUser', JSON.stringify(data));
 }
 
-// --- Appointment System ---
+// Initialisiert Terminbereich und registriert PDF-Upload-Listener
 function initAppointments() {
   const uploadInput = document.getElementById('pdf-upload');
   if (uploadInput) {
@@ -292,6 +308,7 @@ function initAppointments() {
   loadAppointments();
 }
 
+// Lädt Termine aus IndexedDB oder localStorage
 async function loadAppointments() {
   try {
     if (window.RehaDB && RehaDB.getAll) {
@@ -305,6 +322,7 @@ async function loadAppointments() {
     console.warn('Fehler beim Laden der Termine aus RehaDB:', e);
   }
 
+  // Fallback: lokale Speicherung
   const storedAppts = localStorage.getItem('rehaAppts');
   if (storedAppts) {
     renderAppointments(JSON.parse(storedAppts));
@@ -313,6 +331,7 @@ async function loadAppointments() {
   }
 }
 
+// Zeigt Fortschrittsanzeige an
 function showProgressBar() {
   const pc = document.getElementById('progress-container');
   if (!pc) return;
@@ -320,12 +339,14 @@ function showProgressBar() {
   updateProgressBar(0, 'Datei wird geladen...');
 }
 
+// Versteckt Fortschrittsanzeige
 function hideProgressBar() {
   const pc = document.getElementById('progress-container');
   if (!pc) return;
   pc.style.display = 'none';
 }
 
+// Aktualisiert Fortschrittsbalken und Status
 function updateProgressBar(percent, statusText) {
   const fill = document.getElementById('progress-bar-fill');
   const percentText = document.getElementById('progress-percent');
@@ -335,6 +356,7 @@ function updateProgressBar(percent, statusText) {
   if (status) status.textContent = statusText;
 }
 
+// Speichert Terminliste in IndexedDB oder localStorage
 async function saveAppointments(appointments) {
   try {
     if (window.RehaDB && RehaDB.clear && RehaDB.put) {
@@ -350,18 +372,22 @@ async function saveAppointments(appointments) {
     console.warn('Fehler beim Speichern der Termine in RehaDB:', e);
   }
 
+  // Fallback
   localStorage.setItem('rehaAppts', JSON.stringify(appointments));
 }
 
+// Verarbeitet hochgeladene PDF-Datei, führt OCR durch und extrahiert Termine
 async function handlePDFUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  // Validierung der Datei
   if (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
     alert('Bitte wählen Sie eine PDF-Datei aus.');
     return;
   }
 
+  // Entfernt Demo-Daten bei echtem Upload
   try {
     if (window.RehaDB && RehaDB.deleteMockupData) {
       await RehaDB.deleteMockupData();
@@ -377,6 +403,7 @@ async function handlePDFUpload(event) {
   try {
     if (!window.pdfjsLib) throw new Error('PDF.js ist nicht geladen (pdfjsLib undefined).');
 
+    // PDF laden
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     console.log('PDF loadingTask created:', loadingTask);
@@ -397,6 +424,7 @@ async function handlePDFUpload(event) {
 
     updateProgressBar(10, `Verarbeite ${totalPages} Seiten...`);
 
+    // Jede Seite rendern + OCR
     for (let i = 1; i <= totalPages; i++) {
       currentPage = i;
       const pageProgress = (currentPage / totalPages) * 80 + 10;
@@ -412,6 +440,7 @@ async function handlePDFUpload(event) {
       
       await page.render({ canvasContext: context, viewport: viewport }).promise;
       
+      // OCR durchführen
       if (window.Tesseract) {
         const { data: { text } } = await Tesseract.recognize(canvas, 'deu', {
           logger: m => {
@@ -433,14 +462,17 @@ async function handlePDFUpload(event) {
     updateProgressBar(95, 'Termine werden erstellt...');
     console.log('Extrahierter Gesamttext:', fullText);
 
+    // Patienten-ID extrahieren
     const patIdMatch = fullText.match(/Pat\s*\.\s*ID\s*[:\s]\s*(PT\d+)/i);
     const extractedPatientId = patIdMatch ? patIdMatch[1] : '—';
     console.log('Gefundene Patienten-ID:', extractedPatientId);
 
+    // Termine parsen
     const newAppointments = parseSmartAppointments(fullText);
 
     if (newAppointments.length > 0) {
       try {
+        // Speichern in DB
         if (window.RehaDB && RehaDB.put) {
           const docId = 'doc-' + Date.now();
           
@@ -500,6 +532,7 @@ async function handlePDFUpload(event) {
   }
 }
 
+// Extrahiert Termine aus OCR-Text und erzeugt strukturierte Terminobjekte
 function parseSmartAppointments(text) {
   const appointments = [];
   const lines = text.split('\n').map(line => line.trim().replace(/\s+/g, ' ')).filter(line => line.length > 2);
@@ -581,6 +614,7 @@ function parseSmartAppointments(text) {
   return appointments;
 }
 
+// Markiert einen Termin als erledigt / nicht erledigt
 function toggleAppointmentStatus(id) {
   (async () => {
     try {
@@ -611,6 +645,7 @@ function toggleAppointmentStatus(id) {
   })();
 }
 
+// Baut die Terminliste im UI auf
 function renderAppointments(appointments) {
   const container = document.getElementById('appointments-container');
   if (!container) return;

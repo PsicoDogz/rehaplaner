@@ -1,3 +1,29 @@
+/*
+  styles.css – Zentrales Stylesheet der RehaPlaner+ PWA
+
+  Dieses Stylesheet definiert das komplette visuelle Erscheinungsbild der App.
+  Es enthält:
+
+  • Farbvariablen (CSS Custom Properties) für konsistentes Design
+  • Layout-Strukturen für Header, Navigation, Karten, Listen und Views
+  • Komponenten-Styles für Termine, Dokumente, Trainings und Chat
+  • Animationen und Interaktionszustände (Hover, Active, Expanded)
+  • Responsive Anpassungen für mobile Nutzung (Mobile-First)
+
+  Designprinzipien:
+  • Mobile-optimiertes Layout mit klaren Abständen und großen Touch-Flächen
+  • Farbkonzept auf Basis von Blau- und Grautönen für medizinischen Kontext
+  • Wiederverwendbare Komponenten (Cards, Badges, Chips, Detail-Row)
+  • Fokus auf Lesbarkeit und klare visuelle Hierarchie
+
+  Besonderheiten:
+  • Termin- und Dokumentenkarten besitzen dynamische Zustände (expanded, completed)
+  • Chat-Bereich nutzt flexibles Layout für eingehende/ausgehende Nachrichten
+  • Progress-Overlay für PDF-Upload ist als Fullscreen-Layer umgesetzt
+  • A+ Button (Schriftgrößenumschaltung) wird über data-Attribute gesteuert
+
+  Diese Datei enthält ausschließlich Styling; keine Logik.
+*/
 
 :root {
     --primary-blue: #2563EB;
@@ -24,11 +50,11 @@
 body {
     background-color: var(--bg-light);
     color: var(--text-dark);
-    padding-bottom: 90px; /* Space for Bottom Nav */
-    padding-top: 60px;    /* Space for Header */
+    padding-bottom: 90px; 
+    padding-top: 60px;   
 }
 
-/* Header */
+
 .app-header {
     position: fixed;
     top: 0;
@@ -85,7 +111,6 @@ body {
     cursor: pointer;
 }
 
-/* Main Content */
 main {
     padding: 16px;
     max-width: 600px;
@@ -111,7 +136,6 @@ main {
     }
 }
 
-/* Cards Common */
 .card {
     background: white;
     border-radius: 16px;
@@ -120,7 +144,6 @@ main {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Welcome Card */
 .welcome-card {
     background: var(--primary-blue);
     color: white;
@@ -165,7 +188,6 @@ main {
     color: white;
 }
 
-/* Appointment Card */
 .card-header {
     display: flex;
     justify-content: space-between;
@@ -224,7 +246,6 @@ main {
     border: 1px solid #E5E7EB;
 }
 
-/* Stats Row */
 .stats-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -272,7 +293,6 @@ main {
     color: var(--text-grey);
 }
 
-/* Chat View Specifics */
 .view-title {
     text-align: center;
     color: #003366;
@@ -305,7 +325,6 @@ main {
     color: var(--text-grey);
 }
 
-/* Name/Rollen-Zeile im Chat-Bubble */
 .chat-author {
     font-size: 0.75rem;
     color: var(--text-grey);
@@ -343,7 +362,6 @@ main {
     border-color: var(--primary-blue);
 }
 
-/* Bottom Nav */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -379,7 +397,6 @@ main {
     font-size: 24px;
 }
 
-/* FAB (Training Button) */
 .fab-wrapper {
     position: relative;
     top: -25px;
@@ -413,7 +430,6 @@ main {
     margin-top: 4px;
 }
 
-/* Appointments View */
 .appointments-header {
     display: flex;
     justify-content: space-between;
@@ -506,7 +522,6 @@ main {
     color: var(--text-grey);
 }
 
-/* Checkbox Styles */
 .checkbox-wrapper input {
     display: none;
 }
@@ -547,7 +562,6 @@ main {
     transition: transform 0.3s ease;
 }
 
-/* Expanded State */
 .appointment-card.expanded .expand-icon {
     transform: rotate(180deg);
 }
@@ -560,7 +574,7 @@ main {
 }
 
 .appointment-card.expanded .appt-details {
-    max-height: 200px; /* Adjust based on content */
+    max-height: 200px; 
     opacity: 1;
     margin-top: 16px;
     padding-top: 16px;
@@ -598,7 +612,6 @@ main {
     margin-top: 8px;
 }
 
-/* Chat Messages */
 .chat-area {
     height: 420px;
     padding: 12px;
@@ -645,7 +658,6 @@ main {
     margin-top: 2px;
 }
 
-/* Chat Input */
 .chat-input {
     margin-top: 10px;
     display: flex;
@@ -675,7 +687,6 @@ main {
 }
 
 
-/* Progress Bar Container */
 .progress-container {
     position: fixed;
     top: 0;
@@ -799,12 +810,6 @@ main {
     cursor: pointer;
 }
 
-/* ============================================
-   MOCKUP-STYLES für Training & Dokumente
-   (Einfach ans Ende der styles.css kopieren)
-   ============================================ */
-
-/* Goldener "Demo" Badge */
 .mockup-badge {
   display: inline-block;
   background: linear-gradient(135deg, #FFD700, #FFA500);
@@ -820,7 +825,6 @@ main {
   vertical-align: middle;
 }
 
-/* Gelber Info-Banner für Mockup-Hinweise */
 .mockup-banner {
   background: #FFF3CD;
   border: 1px solid #FFEAA7;
@@ -841,7 +845,6 @@ main {
   flex-shrink: 0;
 }
 
-/* Dokumenten-Karten */
 .doc-card {
   background: white;
   border-radius: 12px;
@@ -914,7 +917,6 @@ main {
   font-size: 16px;
 }
 
-/* Training-Karten */
 .training-card {
   background: white;
   border-radius: 12px;
@@ -1005,7 +1007,6 @@ main {
   font-size: 18px;
 }
 
-/* Header für View-Seiten */
 .view-header {
   display: flex;
   justify-content: space-between;

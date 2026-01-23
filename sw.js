@@ -1,4 +1,29 @@
-// Simple service worker: precache app shell + runtime caching for same-origin requests
+/*
+  sw.js – Service Worker für RehaPlaner+
+
+  Dieser Service Worker macht die PWA offline‑fähig und steuert das gesamte
+  Caching-Verhalten der Anwendung. Er besteht aus drei Hauptphasen:
+
+  • INSTALL:
+    - Lädt die App‑Shell (HTML, CSS, JS, Icons, Vendor‑Libs) in den Cache
+    - skipWaiting() aktiviert den neuen SW sofort
+
+  • ACTIVATE:
+    - Entfernt alte Cache‑Versionen
+    - clients.claim() sorgt dafür, dass der neue SW sofort Kontrolle übernimmt
+
+  • FETCH:
+    - Navigation (HTML): Network‑First mit Fallback auf index.html
+    - Statische Dateien (CSS, JS, Bilder): Cache‑First mit Runtime‑Caching
+    - Externe Requests: Network‑First mit Cache‑Fallback
+
+  Besonderheiten:
+  • Zwei getrennte Caches: App‑Shell (statisch) und Runtime‑Cache (dynamisch)
+  • PDF.js, Worker und Tesseract werden bewusst vorab gecached, damit OCR offline funktioniert
+  • Fehlerfälle (z. B. offline Bilder) werden abgefangen und durch Fallbacks ersetzt
+
+  Der Service Worker ist essenziell für Offline‑First Verhalten der PWA.
+*/
 
 const CACHE_NAME = 'reha-app-shell-v1';
 const RUNTIME_CACHE = 'reha-runtime-v1';
@@ -26,7 +51,6 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  // clean up old caches
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.map(k => {
@@ -40,10 +64,8 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Only handle GET requests
   if (req.method !== 'GET') return;
 
-  // For navigation requests, try network first then cache
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req).then(res => {
@@ -55,19 +77,16 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // For same-origin static assets: cache-first
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(req).then(cached => {
         if (cached) return cached;
         return fetch(req).then(networkRes => {
-          // add to runtime cache
           return caches.open(RUNTIME_CACHE).then(cache => {
             cache.put(req, networkRes.clone());
             return networkRes;
           });
         }).catch(() => {
-          // fallback for images / icons
           if (req.destination === 'image') return caches.match('./reha-logo.png');
         });
       })
@@ -75,7 +94,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // For other requests (cross-origin): network-first with cache fallback
   event.respondWith(
     fetch(req).then(res => {
       const copy = res.clone();
