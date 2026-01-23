@@ -15,7 +15,7 @@ rehaplaner/
 ├── package.json              # Abhängigkeiten (pdfjs-dist, tesseract.js)
 ├── package-lock.json
 ├── LICENSE
-└── icons/                    # App-Icons
+└── reha-logo.jpeg                  
 
 Wichtigste 3 Dateien:
 app.js - Zentrale Anwendungslogik. Hier läuft die komplette Funktionalität: View-Navigation, PDF-Upload-Pipeline mit OCR, Termin-Parsing, Chat-State-Management, IndexedDB-Synchronisation und UI-Steuerung. Die Funktion parseSmartAppointments() ist der kritischste Part: Sie extrahiert strukturierte Daten aus Roh-OCR-Text, validiert sie und sortiert chronologisch. Diese Module wurden durch iterative Entwicklung und gezielte KI-Unterstützung bei komplexen Regex-Patterns verfeinert.
